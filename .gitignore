@@ -3,6 +3,7 @@ dist/
 dist-electron/
 release/
 out/
+*.tsbuildinfo
 
 # Stockfish binary is downloaded by a setup script, not committed
 vendor/stockfish/
