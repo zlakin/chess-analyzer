@@ -16,7 +16,7 @@ subscription.
   Mistake / Blunder / Brilliant / Great).
 - Per-player accuracy % and end-of-game summary.
 - Game import via: paste PGN text, upload a `.pgn` file, fetch from
-  chess.com (by username → recent games, or by game URL).
+  chess.com by username (lists recent games to pick from).
 
 Out of scope for v1: mobile/web hosting, opening-explorer/book database
 beyond a minimal move list, puzzle generation, multi-engine comparison,
@@ -72,9 +72,13 @@ user's primary need).
 - **Paste PGN**: text box, parsed immediately with chess.js.
 - **Upload PGN**: native OS file dialog (via main process) for a
   `.pgn` file.
-- **Chess.com fetch**: enter a username to list recent games, or paste a
-  direct game URL; pulled via chess.com's public read-only API (no auth
-  required).
+- **Chess.com fetch**: enter a username; the app lists games from that
+  player's most recent monthly archive to pick from. Pulled via
+  chess.com's official public Published-Data API (no auth required).
+  Fetch-by-URL is intentionally not supported: chess.com's official API
+  has no lookup-by-URL endpoint (only `username → monthly game list`),
+  and the alternative — an undocumented callback endpoint — was rejected
+  as too fragile to depend on.
 - **Error handling**:
   - Stockfish binary missing or crashes → clear in-app message; app
     keeps running.
