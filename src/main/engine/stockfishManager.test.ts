@@ -102,6 +102,29 @@ describe('StockfishManager', () => {
     expect(proc.kill).toHaveBeenCalled()
   })
 
+  it('rejects an in-flight evaluatePosition() when stop() is called mid-flight', async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      { depth: 15, multiPv: 2 }
+    )
+
+    manager.stop()
+
+    await expect(evalPromise).rejects.toThrow('StockfishManager: stopped')
+  })
+
+  it('does not throw when stop() is called with no in-flight request', async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    expect(() => manager.stop()).not.toThrow()
+  })
+
   it('rejects start() instead of throwing when the process emits an error event', async () => {
     const { proc } = createFakeProcess()
     const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)

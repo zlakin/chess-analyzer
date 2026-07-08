@@ -68,6 +68,10 @@ export class StockfishManager {
   stop(): void {
     this.process?.kill()
     this.process = null
+    const handlers = this.drainPendingHandlers()
+    if (handlers.length === 0) return
+    const stopError = new Error('StockfishManager: stopped')
+    for (const handler of handlers) handler(stopError)
   }
 
   private onData(chunk: Buffer): void {
@@ -118,15 +122,28 @@ export class StockfishManager {
    * is rejected with the underlying error instead.
    */
   private handleProcessError(err: Error): void {
-    const handlers = this.pendingErrorHandlers
-    this.pendingLineHandlers = []
-    this.pendingErrorHandlers = []
     this.process = null
+    const handlers = this.drainPendingHandlers()
     if (handlers.length === 0) {
       console.error('StockfishManager: engine process error with no pending request', err)
       return
     }
     for (const handler of handlers) handler(err)
+  }
+
+  /**
+   * Snapshots and clears every in-flight pending handler (both the line
+   * handlers and their paired error handlers), so the caller can settle them
+   * exactly once. Used by both `handleProcessError()` (unexpected process
+   * failure) and `stop()` (deliberate shutdown) so that no `start()` /
+   * `evaluatePosition()` promise is ever left hanging when the process goes
+   * away, however that happens.
+   */
+  private drainPendingHandlers(): Array<(err: Error) => void> {
+    const handlers = this.pendingErrorHandlers
+    this.pendingLineHandlers = []
+    this.pendingErrorHandlers = []
+    return handlers
   }
 }
 
