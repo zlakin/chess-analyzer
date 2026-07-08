@@ -11,7 +11,9 @@ function createFakeProcess(): {
   const stdout = new EventEmitter()
   const written: string[] = []
 
-  const fakeProc = {
+  // The fake process is itself an EventEmitter so it can emit 'error', just
+  // like a real child_process.ChildProcess (which extends EventEmitter).
+  const fakeProc = Object.assign(new EventEmitter(), {
     stdout,
     stdin: {
       write: (data: string) => {
@@ -25,7 +27,7 @@ function createFakeProcess(): {
       }
     },
     kill: vi.fn()
-  }
+  })
 
   return { proc: fakeProc as unknown as ChildProcessWithoutNullStreams, stdout, written }
 }
@@ -98,5 +100,45 @@ describe('StockfishManager', () => {
     manager.stop()
 
     expect(proc.kill).toHaveBeenCalled()
+  })
+
+  it('rejects start() instead of throwing when the process emits an error event', async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+
+    const startPromise = manager.start()
+    const spawnError = new Error('spawn /fake/path/to/stockfish ENOENT')
+    proc.emit('error', spawnError)
+
+    await expect(startPromise).rejects.toThrow('spawn /fake/path/to/stockfish ENOENT')
+  })
+
+  it('rejects an in-flight evaluatePosition() when the process errors', async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      { depth: 15, multiPv: 2 }
+    )
+
+    const crashError = new Error('engine crashed')
+    proc.emit('error', crashError)
+
+    await expect(evalPromise).rejects.toThrow('engine crashed')
+  })
+
+  it('does not throw an unhandled exception when the process errors with no pending request', async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(() => proc.emit('error', new Error('late failure'))).not.toThrow()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 })

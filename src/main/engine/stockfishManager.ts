@@ -8,6 +8,7 @@ export class StockfishManager {
   private process: ChildProcessWithoutNullStreams | null = null
   private lineBuffer = ''
   private pendingLineHandlers: Array<(line: string) => void> = []
+  private pendingErrorHandlers: Array<(err: Error) => void> = []
 
   constructor(
     private readonly binaryPath: string,
@@ -15,8 +16,10 @@ export class StockfishManager {
   ) {}
 
   async start(): Promise<void> {
-    this.process = this.spawnFn(this.binaryPath, [])
-    this.process.stdout.on('data', (chunk: Buffer) => this.onData(chunk))
+    const proc = this.spawnFn(this.binaryPath, [])
+    this.process = proc
+    proc.on('error', (err: Error) => this.handleProcessError(err))
+    proc.stdout.on('data', (chunk: Buffer) => this.onData(chunk))
     await this.sendAndWaitForLine('uci', (line) => line === 'uciok')
     await this.sendAndWaitForLine('isready', (line) => line === 'readyok')
     this.send('ucinewgame')
@@ -32,17 +35,26 @@ export class StockfishManager {
 
     const linesByMultiPv = new Map<number, EngineLine>()
 
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
+      const cleanup = (): void => {
+        this.pendingLineHandlers = this.pendingLineHandlers.filter((h) => h !== handler)
+        this.pendingErrorHandlers = this.pendingErrorHandlers.filter((h) => h !== errorHandler)
+      }
       const handler = (line: string): void => {
         if (line.startsWith('info ') && line.includes(' pv ')) {
           const parsed = parseInfoLine(line)
           if (parsed) linesByMultiPv.set(parsed.multiPv, parsed.line)
         } else if (line.startsWith('bestmove')) {
-          this.pendingLineHandlers = this.pendingLineHandlers.filter((h) => h !== handler)
+          cleanup()
           resolve()
         }
       }
+      const errorHandler = (err: Error): void => {
+        cleanup()
+        reject(err)
+      }
       this.pendingLineHandlers.push(handler)
+      this.pendingErrorHandlers.push(errorHandler)
       this.send(`go depth ${options.depth}`)
     })
 
@@ -77,16 +89,44 @@ export class StockfishManager {
   }
 
   private sendAndWaitForLine(command: string, matches: (line: string) => boolean): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const cleanup = (): void => {
+        this.pendingLineHandlers = this.pendingLineHandlers.filter((h) => h !== handler)
+        this.pendingErrorHandlers = this.pendingErrorHandlers.filter((h) => h !== errorHandler)
+      }
       const handler = (line: string): void => {
         if (matches(line)) {
-          this.pendingLineHandlers = this.pendingLineHandlers.filter((h) => h !== handler)
+          cleanup()
           resolve()
         }
       }
+      const errorHandler = (err: Error): void => {
+        cleanup()
+        reject(err)
+      }
       this.pendingLineHandlers.push(handler)
+      this.pendingErrorHandlers.push(errorHandler)
       this.send(command)
     })
+  }
+
+  /**
+   * Handles the child process's 'error' event (e.g. ENOENT when the Stockfish
+   * binary is missing or misconfigured). Without this listener, Node.js would
+   * throw the 'error' event as an uncaught exception and crash the Electron
+   * main process. Any promise currently awaiting a response from the engine
+   * is rejected with the underlying error instead.
+   */
+  private handleProcessError(err: Error): void {
+    const handlers = this.pendingErrorHandlers
+    this.pendingLineHandlers = []
+    this.pendingErrorHandlers = []
+    this.process = null
+    if (handlers.length === 0) {
+      console.error('StockfishManager: engine process error with no pending request', err)
+      return
+    }
+    for (const handler of handlers) handler(err)
   }
 }
 
