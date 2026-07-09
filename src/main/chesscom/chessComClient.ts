@@ -19,23 +19,44 @@ interface ChessComGamesResponse {
   }>
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  let response: Response
+async function doFetch(url: string): Promise<Response> {
   try {
-    response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
+    return await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
   } catch (err) {
     throw new ChessComFetchError(`Network error contacting chess.com: ${(err as Error).message}`)
   }
+}
+
+function throwForErrorStatus(response: Response): never {
   if (response.status === 404) {
     throw new ChessComFetchError('Chess.com user not found')
   }
   if (response.status === 429) {
     throw new ChessComFetchError('Chess.com rate-limited this request. Try again in a moment.')
   }
-  if (!response.ok) {
-    throw new ChessComFetchError(`Chess.com request failed: ${response.status} ${response.statusText}`)
-  }
+  throw new ChessComFetchError(`Chess.com request failed: ${response.status} ${response.statusText}`)
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const response = await doFetch(url)
+  if (!response.ok) throwForErrorStatus(response)
   return response.json() as Promise<T>
+}
+
+// The chess.com Published-Data API includes the current (and sometimes an
+// upcoming) month in a player's `archives` list before any games have been
+// recorded for it, and fetching that month's games endpoint then returns a
+// plain 404 -- indistinguishable, by status code alone, from the archives
+// endpoint's own "player does not exist" 404. That does NOT mean the player
+// is missing, just that they have no games that month yet, so it must be
+// treated as an empty result and skipped rather than surfaced as a fatal
+// "user not found" error.
+async function fetchMonthGamesOrEmpty(url: string): Promise<ChessComGamesResponse['games']> {
+  const response = await doFetch(url)
+  if (response.status === 404) return []
+  if (!response.ok) throwForErrorStatus(response)
+  const body = (await response.json()) as ChessComGamesResponse
+  return body.games
 }
 
 export async function fetchRecentGames(
@@ -57,7 +78,7 @@ export async function fetchRecentGames(
 
   const games: ChessComGameSummary[] = []
   for (let i = archives.length - 1; i >= 0 && games.length < limit; i--) {
-    const { games: monthGames } = await fetchJson<ChessComGamesResponse>(archives[i])
+    const monthGames = await fetchMonthGamesOrEmpty(archives[i])
     for (const game of [...monthGames].reverse()) {
       if (!game.pgn) continue
       games.push({

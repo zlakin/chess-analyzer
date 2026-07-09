@@ -63,4 +63,48 @@ describe('fetchRecentGames', () => {
   it('throws ChessComFetchError for an empty username', async () => {
     await expect(fetchRecentGames('   ')).rejects.toThrow(ChessComFetchError)
   })
+
+  it('treats a 404 on an individual month archive as no games that month, not a fatal error', async () => {
+    // chess.com lists the current month in `archives` before any games are
+    // recorded for it, and that month's games endpoint 404s until the
+    // player has played something. That must not be confused with the
+    // player themselves not existing (which also 404s, but on the
+    // `/archives` endpoint).
+    const archivesResponse = {
+      archives: [
+        'https://api.chess.com/pub/player/testuser/games/2026/06',
+        'https://api.chess.com/pub/player/testuser/games/2026/07'
+      ]
+    }
+    const gamesResponse = {
+      games: [
+        {
+          url: 'https://www.chess.com/game/live/1',
+          pgn: '1. e4 e5',
+          end_time: 1000,
+          time_control: '600',
+          white: { username: 'testuser', rating: 1500, result: 'win' },
+          black: { username: 'opponent', rating: 1490, result: 'checkmated' }
+        }
+      ]
+    }
+
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.toString().endsWith('/archives')) {
+        return new Response(JSON.stringify(archivesResponse), { status: 200 })
+      }
+      // The most recent month (2026/07) has no games yet -> 404.
+      if (url.includes('2026/07')) {
+        return new Response('', { status: 404 })
+      }
+      // The prior month has games.
+      return new Response(JSON.stringify(gamesResponse), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const games = await fetchRecentGames('testuser', 10)
+
+    expect(games).toHaveLength(1)
+    expect(games[0].url).toBe('https://www.chess.com/game/live/1')
+  })
 })
