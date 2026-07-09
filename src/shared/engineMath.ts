@@ -23,14 +23,20 @@ export interface MoveEvalDelta {
   isBestMove: boolean
 }
 
+// Defense-in-depth fallback for an empty `lines` array. evaluatePosition()
+// should never actually return one (it synthesizes a terminal EngineLine
+// for checkmate/stalemate positions), but this keeps computeMoveEvalDelta
+// from throwing if some future engine implementation or fixture ever does.
+const FALLBACK_LINE: EngineLine = { depth: 0, scoreCp: 0, scoreMate: null, moveUci: '', pv: [] }
+
 export function computeMoveEvalDelta(
   evalBefore: PositionEvaluation,
   evalAfter: PositionEvaluation,
   playedMoveUci: string
 ): MoveEvalDelta {
-  const bestLineBefore = evalBefore.lines[0]
+  const bestLineBefore = evalBefore.lines[0] ?? FALLBACK_LINE
   const secondLineBefore = evalBefore.lines[1] ?? null
-  const bestLineAfter = evalAfter.lines[0]
+  const bestLineAfter = evalAfter.lines[0] ?? FALLBACK_LINE
 
   const evalBeforeMoverCp = effectiveCp(bestLineBefore)
   const evalAfterMoverCp = -effectiveCp(bestLineAfter)

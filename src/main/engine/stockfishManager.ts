@@ -20,6 +20,10 @@ export class StockfishManager {
     this.process = proc
     proc.on('error', (err: Error) => this.handleProcessError(err))
     proc.stdout.on('data', (chunk: Buffer) => this.onData(chunk))
+    // Previously silently dropped: without this listener, anything the
+    // engine writes to stderr (e.g. a crash message) is lost, making a dead
+    // engine indistinguishable from a slow one.
+    proc.stderr.on('data', (chunk: Buffer) => this.onStderr(chunk))
     await this.sendAndWaitForLine('uci', (line) => line === 'uciok')
     await this.sendAndWaitForLine('isready', (line) => line === 'readyok')
     this.send('ucinewgame')
@@ -34,6 +38,15 @@ export class StockfishManager {
     this.send(`position fen ${fen}`)
 
     const linesByMultiPv = new Map<number, EngineLine>()
+    // For a terminal position (checkmate/stalemate) there is no legal move,
+    // so Stockfish emits an "info depth 0 score (mate 0|cp 0) ..." line with
+    // no " pv " token, followed by "bestmove (none)". parseInfoLine rejects
+    // that line (correctly, for the normal case), so linesByMultiPv would
+    // otherwise stay empty. Track the most recent no-pv scored info line
+    // here so we can synthesize a terminal EngineLine if no PV line ever
+    // arrives, instead of returning an empty `lines` array that crashes
+    // every downstream consumer of lines[0].
+    let terminalLine: EngineLine | null = null
 
     await new Promise<void>((resolve, reject) => {
       const cleanup = (): void => {
@@ -41,9 +54,14 @@ export class StockfishManager {
         this.pendingErrorHandlers = this.pendingErrorHandlers.filter((h) => h !== errorHandler)
       }
       const handler = (line: string): void => {
-        if (line.startsWith('info ') && line.includes(' pv ')) {
-          const parsed = parseInfoLine(line)
-          if (parsed) linesByMultiPv.set(parsed.multiPv, parsed.line)
+        if (line.startsWith('info ')) {
+          if (line.includes(' pv ')) {
+            const parsed = parseInfoLine(line)
+            if (parsed) linesByMultiPv.set(parsed.multiPv, parsed.line)
+          } else {
+            const parsed = parseTerminalInfoLine(line)
+            if (parsed) terminalLine = parsed
+          }
         } else if (line.startsWith('bestmove')) {
           cleanup()
           resolve()
@@ -62,6 +80,14 @@ export class StockfishManager {
       .sort(([a], [b]) => a - b)
       .map(([, evalLine]) => evalLine)
 
+    if (lines.length === 0) {
+      // Either a scored-but-no-pv terminal line was captured above (the
+      // observed real-Stockfish behavior for both checkmate and stalemate),
+      // or bestmove (none) arrived with no info line at all -- fall back to
+      // a neutral, drawn-looking line rather than leaving `lines` empty.
+      lines.push(terminalLine ?? { depth: 0, scoreCp: 0, scoreMate: null, moveUci: '', pv: [] })
+    }
+
     return { lines }
   }
 
@@ -72,6 +98,12 @@ export class StockfishManager {
     if (handlers.length === 0) return
     const stopError = new Error('StockfishManager: stopped')
     for (const handler of handlers) handler(stopError)
+  }
+
+  private onStderr(chunk: Buffer): void {
+    const text = chunk.toString().trim()
+    if (text.length === 0) return
+    console.error('StockfishManager: stderr:', text)
   }
 
   private onData(chunk: Buffer): void {
@@ -176,5 +208,36 @@ function parseInfoLine(line: string): { multiPv: number; line: EngineLine } | nu
       moveUci: pv[0],
       pv
     }
+  }
+}
+
+/**
+ * Parses a scored "info" line that has no " pv " token -- the shape
+ * Stockfish uses to report a terminal position (checkmate or stalemate),
+ * since there is no principal variation to give. Returns null for any other
+ * no-pv "info" line (e.g. "info string ..." or a depth/currmove progress
+ * line with no score), so it can never misinterpret a normal search-progress
+ * line as a terminal result.
+ */
+function parseTerminalInfoLine(line: string): EngineLine | null {
+  const tokens = line.split(' ')
+  const get = (key: string): string | null => {
+    const idx = tokens.indexOf(key)
+    return idx === -1 ? null : tokens[idx + 1]
+  }
+
+  const depthStr = get('depth')
+  if (!depthStr) return null
+
+  const scoreCpStr = get('cp')
+  const scoreMateStr = get('mate')
+  if (!scoreCpStr && !scoreMateStr) return null
+
+  return {
+    depth: Number(depthStr),
+    scoreCp: scoreCpStr ? Number(scoreCpStr) : null,
+    scoreMate: scoreMateStr ? Number(scoreMateStr) : null,
+    moveUci: '',
+    pv: []
   }
 }

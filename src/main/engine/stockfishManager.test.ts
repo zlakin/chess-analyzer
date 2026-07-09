@@ -6,15 +6,18 @@ import { StockfishManager } from './stockfishManager'
 function createFakeProcess(): {
   proc: ChildProcessWithoutNullStreams
   stdout: EventEmitter
+  stderr: EventEmitter
   written: string[]
 } {
   const stdout = new EventEmitter()
+  const stderr = new EventEmitter()
   const written: string[] = []
 
   // The fake process is itself an EventEmitter so it can emit 'error', just
   // like a real child_process.ChildProcess (which extends EventEmitter).
   const fakeProc = Object.assign(new EventEmitter(), {
     stdout,
+    stderr,
     stdin: {
       write: (data: string) => {
         written.push(data)
@@ -29,7 +32,7 @@ function createFakeProcess(): {
     kill: vi.fn()
   })
 
-  return { proc: fakeProc as unknown as ChildProcessWithoutNullStreams, stdout, written }
+  return { proc: fakeProc as unknown as ChildProcessWithoutNullStreams, stdout, stderr, written }
 }
 
 describe('StockfishManager', () => {
@@ -163,5 +166,87 @@ describe('StockfishManager', () => {
     expect(consoleErrorSpy).toHaveBeenCalled()
 
     consoleErrorSpy.mockRestore()
+  })
+
+  it('synthesizes a terminal EngineLine for a checkmated position (real Stockfish emits no pv)', async () => {
+    // Real Stockfish output for a checkmate FEN: an "info depth 0 score mate
+    // 0" line (no " pv " token, since there is no legal move to report) then
+    // "bestmove (none)". Without special handling, parseInfoLine rejects the
+    // no-pv line, leaving `lines` empty and crashing every downstream
+    // consumer that reads lines[0].
+    const { proc, stdout } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition('k7/1Q6/1K6/8/8/8/8/8 b - - 0 1', {
+      depth: 10,
+      multiPv: 2
+    })
+
+    stdout.emit('data', Buffer.from('info depth 0 score mate 0\nbestmove (none)\n'))
+
+    const evaluation = await evalPromise
+
+    expect(evaluation.lines).toHaveLength(1)
+    expect(evaluation.lines[0].scoreMate).toBe(0)
+    expect(evaluation.lines[0].scoreCp).toBeNull()
+    expect(evaluation.lines[0].pv).toEqual([])
+  })
+
+  it('synthesizes a terminal EngineLine for a stalemated position (real Stockfish emits no pv)', async () => {
+    // Real Stockfish output for a stalemate FEN: an "info depth 0 score cp
+    // 0" line (no pv) then "bestmove (none)".
+    const { proc, stdout } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1', {
+      depth: 10,
+      multiPv: 2
+    })
+
+    stdout.emit('data', Buffer.from('info depth 0 score cp 0\nbestmove (none)\n'))
+
+    const evaluation = await evalPromise
+
+    expect(evaluation.lines).toHaveLength(1)
+    expect(evaluation.lines[0].scoreCp).toBe(0)
+    expect(evaluation.lines[0].scoreMate).toBeNull()
+  })
+
+  it('logs stderr output instead of silently dropping it', async () => {
+    const { proc, stderr } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    stderr.emit('data', Buffer.from('Fatal error: something went wrong\n'))
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'StockfishManager: stderr:',
+      'Fatal error: something went wrong'
+    )
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('falls back to a neutral terminal EngineLine if bestmove (none) arrives with no info line at all', async () => {
+    const { proc, stdout } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1', {
+      depth: 10,
+      multiPv: 2
+    })
+
+    stdout.emit('data', Buffer.from('bestmove (none)\n'))
+
+    const evaluation = await evalPromise
+
+    expect(evaluation.lines).toHaveLength(1)
+    expect(evaluation.lines[0].scoreCp).toBe(0)
+    expect(evaluation.lines[0].scoreMate).toBeNull()
   })
 })

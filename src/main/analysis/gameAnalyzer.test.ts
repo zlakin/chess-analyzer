@@ -89,4 +89,27 @@ describe('analyzeGame', () => {
     expect(result.whiteAccuracy).toBe(100)
     expect(result.blackAccuracy).toBe(100)
   })
+
+  it('does not throw when a terminal position (checkmate/stalemate) yields an empty lines array', async () => {
+    // Regression test for the crash on games ending in checkmate/stalemate:
+    // a buggy or degenerate engine implementation could still hand back
+    // `{ lines: [] }` for a terminal position (e.g. a future regression, or
+    // a fixture standing in for one). analyzeGame must not throw -- it
+    // should produce a sensible, non-throwing result instead of crashing
+    // the whole analysis on the last move of a decisive game.
+    const emptyLinesEngine = {
+      evaluatePosition: async (fen: string): Promise<PositionEvaluation> => {
+        if (fen === AFTER_E5_FEN) return { lines: [] }
+        return fakeEngine.evaluatePosition(fen)
+      }
+    }
+
+    const result = await analyzeGame(positions, emptyLinesEngine, { depth: 18 })
+
+    if ('cancelled' in result) throw new Error('unexpected cancellation')
+    expect(result.moves).toHaveLength(2)
+    expect(result.moves[1].san).toBe('e5')
+    // No throw, and the move still produced a finite, well-formed evaluation.
+    expect(Number.isFinite(result.moves[1].accuracy)).toBe(true)
+  })
 })

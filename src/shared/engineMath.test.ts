@@ -24,6 +24,12 @@ describe('effectiveCp', () => {
     const mateIn5 = effectiveCp(line({ scoreCp: null, scoreMate: 5 }))
     expect(mateIn1).toBeGreaterThan(mateIn5)
   })
+
+  it('treats "mate 0" (the side to move is checkmated) as a large negative score', () => {
+    // Real Stockfish reports "score mate 0" for a checkmated position -- the
+    // side to move has no moves and is in check, i.e. a loss for them.
+    expect(effectiveCp(line({ scoreCp: null, scoreMate: 0 }))).toBeLessThan(-50000)
+  })
 })
 
 describe('cpToWinPercent', () => {
@@ -76,5 +82,25 @@ describe('computeMoveEvalDelta', () => {
     const delta = computeMoveEvalDelta(evalBefore, evalAfter, 'e2e4')
 
     expect(delta.secondBestMoverCp).toBeNull()
+  })
+
+  it('does not throw when evalAfter has an empty lines array (defense-in-depth)', () => {
+    const evalBefore: PositionEvaluation = { lines: [line({ scoreCp: 40, moveUci: 'e2e4' })] }
+    const evalAfter: PositionEvaluation = { lines: [] }
+
+    expect(() => computeMoveEvalDelta(evalBefore, evalAfter, 'e2e4')).not.toThrow()
+    const delta = computeMoveEvalDelta(evalBefore, evalAfter, 'e2e4')
+    expect(Number.isFinite(delta.evalAfterMoverCp)).toBe(true)
+    expect(Number.isFinite(delta.cpLoss)).toBe(true)
+  })
+
+  it('does not throw when evalBefore has an empty lines array (defense-in-depth)', () => {
+    const evalBefore: PositionEvaluation = { lines: [] }
+    const evalAfter: PositionEvaluation = { lines: [line({ scoreCp: -5, moveUci: 'e7e5' })] }
+
+    expect(() => computeMoveEvalDelta(evalBefore, evalAfter, 'e2e4')).not.toThrow()
+    const delta = computeMoveEvalDelta(evalBefore, evalAfter, 'e2e4')
+    expect(delta.isBestMove).toBe(false)
+    expect(Number.isFinite(delta.evalBeforeMoverCp)).toBe(true)
   })
 })
