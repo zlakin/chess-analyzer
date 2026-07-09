@@ -23,24 +23,32 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       const runId = analysisRuns.start()
       const engine = new StockfishManager(getStockfishBinaryPath())
 
+      // The whole handler body runs under a single top-level try/finally so
+      // that analysisRuns.finish(runId) always runs once the run has
+      // settled -- including when engine.start() itself throws (e.g. the
+      // Stockfish binary is missing) -- otherwise the run's entry lingers
+      // forever in AnalysisRunTracker's internal map.
       try {
-        await engine.start()
-      } catch (err) {
-        return { error: `Could not start Stockfish: ${(err as Error).message}` }
-      }
+        try {
+          await engine.start()
+        } catch (err) {
+          return { error: `Could not start Stockfish: ${(err as Error).message}` }
+        }
 
-      try {
-        return await analyzeGame(positions, engine, {
-          depth: depth || ANALYSIS_DEPTH_DEFAULT,
-          isCancelled: () => analysisRuns.isCancelled(runId),
-          onMove: (move) => {
-            getWindow()?.webContents.send(IPC_CHANNELS.analysisProgress, move)
-          }
-        })
-      } catch (err) {
-        return { error: `Analysis failed: ${(err as Error).message}` }
+        try {
+          return await analyzeGame(positions, engine, {
+            depth: depth || ANALYSIS_DEPTH_DEFAULT,
+            isCancelled: () => analysisRuns.isCancelled(runId),
+            onMove: (move) => {
+              getWindow()?.webContents.send(IPC_CHANNELS.analysisProgress, move)
+            }
+          })
+        } catch (err) {
+          return { error: `Analysis failed: ${(err as Error).message}` }
+        } finally {
+          engine.stop()
+        }
       } finally {
-        engine.stop()
         analysisRuns.finish(runId)
       }
     }
