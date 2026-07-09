@@ -90,11 +90,12 @@ body {
   grid-template-columns: 40px minmax(300px, 480px) 320px;
   gap: 1rem;
   align-items: start;
+  justify-content: center;
 }
 
 .eval-bar {
   position: relative;
-  width: 32px;
+  width: 40px;
   height: 480px;
   border: 1px solid var(--border);
   display: flex;
@@ -117,7 +118,8 @@ body {
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: #000;
   mix-blend-mode: difference;
   filter: invert(1);
@@ -128,20 +130,66 @@ body {
   max-width: 480px;
 }
 
+.board-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.board-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.board-nav button {
+  min-width: 2.75rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.board-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .side-panel {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
+.move-list,
+.eval-graph,
+.game-summary {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .move-list {
   list-style: none;
-  padding: 0;
+  padding: 0.4rem 0;
   margin: 0;
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.move-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.move-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.move-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .move-row {
@@ -183,6 +231,22 @@ body {
 }
 .move.blunder {
   color: #e14c4c;
+}
+
+.eval-graph {
+  padding: 0.6rem 0.6rem 0.2rem;
+}
+
+.game-summary {
+  padding: 0.75rem;
+}
+
+.accuracy-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
 }
 
 .classification-table {

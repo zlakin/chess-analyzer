@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ImportModal } from './components/ImportModal'
 import { Board } from './components/Board'
 import { EvalBar } from './components/EvalBar'
@@ -44,6 +44,22 @@ function App(): JSX.Element {
     setPgnError(null)
   }
 
+  const goToPly = (ply: number): void => {
+    setCurrentPly(Math.max(0, Math.min(ply, state.moves.length)))
+  }
+
+  useEffect(() => {
+    if (state.moves.length === 0) return
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'ArrowLeft') goToPly(currentPly - 1)
+      else if (e.key === 'ArrowRight') goToPly(currentPly + 1)
+      else if (e.key === 'Home') goToPly(0)
+      else if (e.key === 'End') goToPly(state.moves.length)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentPly, state.moves.length])
+
   return (
     <div className="app">
       <header>
@@ -75,7 +91,31 @@ function App(): JSX.Element {
             }
             displayScore={position.evaluation ? formatScore(position.evaluation, position.sideToMove) : '0.00'}
           />
-          <Board fen={position.fen} bestMoveUci={position.bestMoveUci} />
+          <div className="board-column">
+            <Board fen={position.fen} bestMoveUci={position.bestMoveUci} />
+            <div className="board-nav">
+              <button onClick={() => goToPly(0)} disabled={currentPly === 0} title="First move (Home)">
+                ⏮
+              </button>
+              <button onClick={() => goToPly(currentPly - 1)} disabled={currentPly === 0} title="Previous move (←)">
+                ◀
+              </button>
+              <button
+                onClick={() => goToPly(currentPly + 1)}
+                disabled={currentPly === state.moves.length}
+                title="Next move (→)"
+              >
+                ▶
+              </button>
+              <button
+                onClick={() => goToPly(state.moves.length)}
+                disabled={currentPly === state.moves.length}
+                title="Last move (End)"
+              >
+                ⏭
+              </button>
+            </div>
+          </div>
           <div className="side-panel">
             <MoveList moves={state.moves} currentPly={currentPly} onSelectPly={setCurrentPly} />
             <EvalGraph moves={state.moves} currentPly={currentPly} onSelectPly={setCurrentPly} />
