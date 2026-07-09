@@ -12,3 +12,9 @@ for the full design.
 ## Status
 
 Early setup — implementation has not started yet.
+
+Dependency installs require `--legacy-peer-deps` (enforced via the
+committed `.npmrc`) because `electron-vite@5`'s `vite` peer range
+(`^5 || ^6 || ^7`) lags the `vite@^8` this project pins for
+`@vitejs/plugin-react@6`; plain `npm install` / `npm ci` otherwise fail
+with an ERESOLVE conflict.
