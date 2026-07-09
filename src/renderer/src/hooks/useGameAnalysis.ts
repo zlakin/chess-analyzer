@@ -12,9 +12,11 @@ export function useGameAnalysis(): {
   const unsubscribeRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
-    unsubscribeRef.current = window.chessAPI.onAnalysisProgress((move) => {
-      dispatch({ type: 'MOVE_PROGRESS', move })
-    })
+    if (typeof window !== 'undefined' && window.chessAPI) {
+      unsubscribeRef.current = window.chessAPI.onAnalysisProgress((move) => {
+        dispatch({ type: 'MOVE_PROGRESS', move })
+      })
+    }
     return () => unsubscribeRef.current?.()
   }, [])
 
