@@ -1,6 +1,6 @@
 # Chess Analyzer Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build a free, local Electron desktop app that reproduces chess.com's Game Review — engine evaluation, move classification (Book/Brilliant/Great/Best/Excellent/Good/Inaccuracy/Mistake/Blunder), per-player accuracy %, and game import from paste/file/chess.com — using a locally-run Stockfish engine.
 
@@ -41,7 +41,7 @@
 **Interfaces:**
 - Produces: an installable, runnable Electron+React+TS skeleton (`npm run dev` opens a window; `npm test` runs Vitest; `npm run typecheck` runs `tsc -b`) that every later task builds on. No app-specific types yet.
 
-- [ ] **Step 1: Write `package.json`**
+- [x] **Step 1: Write `package.json`**
 
 ```json
 {
@@ -82,7 +82,7 @@
 
 Note: `typescript` is pinned to `^5.5.0` (not the newest `7.x`) deliberately — TypeScript 7 is a very recent major version; 5.x is the well-proven version most tooling in this stack (electron-vite, @types packages) was written against.
 
-- [ ] **Step 2: Write `tsconfig.json`**
+- [x] **Step 2: Write `tsconfig.json`**
 
 ```json
 {
@@ -94,7 +94,7 @@ Note: `typescript` is pinned to `^5.5.0` (not the newest `7.x`) deliberately —
 }
 ```
 
-- [ ] **Step 3: Write `tsconfig.node.json`**
+- [x] **Step 3: Write `tsconfig.node.json`**
 
 ```json
 {
@@ -117,7 +117,7 @@ Note: `typescript` is pinned to `^5.5.0` (not the newest `7.x`) deliberately —
 
 (`composite: true` is required for `tsc -b` — the project-references build mode used by the `typecheck` script — to treat this as a buildable project. It's compatible with `noEmit: true`: `tsc -b` still type-checks and reports errors, it just doesn't write output files. Verified directly: a throwaway project with this exact `composite`+`noEmit` combination correctly caught a deliberate type error via `tsc -b --force` and exited non-zero.)
 
-- [ ] **Step 4: Write `tsconfig.web.json`**
+- [x] **Step 4: Write `tsconfig.web.json`**
 
 ```json
 {
@@ -141,7 +141,7 @@ Note: `typescript` is pinned to `^5.5.0` (not the newest `7.x`) deliberately —
 
 Both this project and `tsconfig.node.json` include `src/shared/**/*` — verified directly that two composite projects independently including the same `noEmit` source files type-checks cleanly with `tsc -b` (no output-collision error, since neither emits).
 
-- [ ] **Step 5: Write `electron.vite.config.ts`**
+- [x] **Step 5: Write `electron.vite.config.ts`**
 
 ```ts
 import { resolve } from 'node:path'
@@ -165,7 +165,7 @@ export default defineConfig({
 
 (electron-vite 5 externalizes main/preload dependencies by default — no `externalizeDepsPlugin` needed.)
 
-- [ ] **Step 6: Write `vitest.config.ts`**
+- [x] **Step 6: Write `vitest.config.ts`**
 
 ```ts
 import { defineConfig } from 'vitest/config'
@@ -178,7 +178,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 7: Write `src/main/index.ts`**
+- [x] **Step 7: Write `src/main/index.ts`**
 
 ```ts
 import { app, BrowserWindow } from 'electron'
@@ -227,7 +227,7 @@ app.on('window-all-closed', () => {
 })
 ```
 
-- [ ] **Step 8: Write `src/preload/index.ts`**
+- [x] **Step 8: Write `src/preload/index.ts`**
 
 ```ts
 import { contextBridge } from 'electron'
@@ -237,7 +237,7 @@ contextBridge.exposeInMainWorld('chessAPI', {})
 
 (Replaced with the real API surface in Task 10.)
 
-- [ ] **Step 9: Write `src/renderer/index.html`**
+- [x] **Step 9: Write `src/renderer/index.html`**
 
 ```html
 <!DOCTYPE html>
@@ -253,7 +253,7 @@ contextBridge.exposeInMainWorld('chessAPI', {})
 </html>
 ```
 
-- [ ] **Step 10: Write `src/renderer/src/main.tsx`**
+- [x] **Step 10: Write `src/renderer/src/main.tsx`**
 
 ```tsx
 import React from 'react'
@@ -267,7 +267,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 )
 ```
 
-- [ ] **Step 11: Write `src/renderer/src/App.tsx`**
+- [x] **Step 11: Write `src/renderer/src/App.tsx`**
 
 ```tsx
 function App(): JSX.Element {
@@ -277,7 +277,7 @@ function App(): JSX.Element {
 export default App
 ```
 
-- [ ] **Step 12: Write a sanity test at `src/shared/sanity.test.ts`**
+- [x] **Step 12: Write a sanity test at `src/shared/sanity.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -289,27 +289,27 @@ describe('project scaffolding', () => {
 })
 ```
 
-- [ ] **Step 13: Install dependencies**
+- [x] **Step 13: Install dependencies**
 
 Run: `npm install`
 Expected: completes with no errors, creates `node_modules/` and `package-lock.json`.
 
-- [ ] **Step 14: Verify the test runner works**
+- [x] **Step 14: Verify the test runner works**
 
 Run: `npm test`
 Expected: `src/shared/sanity.test.ts` passes (1 test, 1 file).
 
-- [ ] **Step 15: Verify type-checking works**
+- [x] **Step 15: Verify type-checking works**
 
 Run: `npm run typecheck`
 Expected: exits 0 with no errors (this runs `tsc -b` across the `main`/`preload`/`renderer` project references — it's the only thing in this project that catches cross-file type errors, since `electron-vite`'s dev/build commands transpile without type-checking).
 
-- [ ] **Step 16: Verify the app boots**
+- [x] **Step 16: Verify the app boots**
 
 Run: `npm run dev`
 Expected: an Electron window opens showing "Chess Analyzer". Close the window (or Ctrl+C the process) once confirmed.
 
-- [ ] **Step 17: Commit**
+- [x] **Step 17: Commit**
 
 ```bash
 git add package.json package-lock.json tsconfig.json tsconfig.node.json tsconfig.web.json electron.vite.config.ts vitest.config.ts src/
@@ -329,11 +329,11 @@ git commit -m "Scaffold Electron + React + TS project with Vitest"
 - Consumes: nothing from earlier tasks (first app-specific module).
 - Produces: `AnalyzedPosition` (used by every later task that touches a game's moves), `EngineLine`, `PositionEvaluation`, `MoveClassification`, `AnalyzedMove`, `GameAnalysisResult`, `ChessComGameSummary`, `ChessAPI` (all in `src/shared/types.ts`); `parsePgn(pgn: string): AnalyzedPosition[]` and `PgnParseError` (in `src/renderer/src/lib/pgn.ts`).
 
-- [ ] **Step 1: Install chess.js**
+- [x] **Step 1: Install chess.js**
 
 Run: `npm install chess.js@^1.4.0`
 
-- [ ] **Step 2: Write `src/shared/types.ts`**
+- [x] **Step 2: Write `src/shared/types.ts`**
 
 ```ts
 export interface AnalyzedPosition {
@@ -410,7 +410,7 @@ export interface ChessAPI {
 }
 ```
 
-- [ ] **Step 3: Write the failing test at `src/renderer/src/lib/pgn.test.ts`**
+- [x] **Step 3: Write the failing test at `src/renderer/src/lib/pgn.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -462,12 +462,12 @@ describe('parsePgn', () => {
 })
 ```
 
-- [ ] **Step 4: Run the test to verify it fails**
+- [x] **Step 4: Run the test to verify it fails**
 
 Run: `npx vitest run src/renderer/src/lib/pgn.test.ts`
 Expected: FAIL — `Cannot find module './pgn'`.
 
-- [ ] **Step 5: Write `src/renderer/src/lib/pgn.ts`**
+- [x] **Step 5: Write `src/renderer/src/lib/pgn.ts`**
 
 ```ts
 import { Chess } from 'chess.js'
@@ -515,12 +515,12 @@ export function parsePgn(pgn: string): AnalyzedPosition[] {
 }
 ```
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `npx vitest run src/renderer/src/lib/pgn.test.ts`
 Expected: PASS (6 tests).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add package.json package-lock.json src/shared/types.ts src/renderer/src/lib/pgn.ts src/renderer/src/lib/pgn.test.ts
@@ -539,7 +539,7 @@ git commit -m "Add shared types and PGN parsing with sacrifice detection"
 - Consumes: `EngineLine`, `PositionEvaluation` from `src/shared/types.ts` (Task 2).
 - Produces: `effectiveCp(line: EngineLine): number`, `cpToWinPercent(cp: number): number`, `computeMoveEvalDelta(evalBefore, evalAfter, playedMoveUci): MoveEvalDelta`, and the `MoveEvalDelta` type — consumed by main's `accuracy.ts` (Task 4), `gameAnalyzer.ts` (Task 8), and renderer's `displayEval.ts` (Task 13).
 
-- [ ] **Step 1: Write the failing test at `src/shared/engineMath.test.ts`**
+- [x] **Step 1: Write the failing test at `src/shared/engineMath.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -624,12 +624,12 @@ describe('computeMoveEvalDelta', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/shared/engineMath.test.ts`
 Expected: FAIL — `Cannot find module './engineMath'`.
 
-- [ ] **Step 3: Write `src/shared/engineMath.ts`**
+- [x] **Step 3: Write `src/shared/engineMath.ts`**
 
 ```ts
 import type { EngineLine, PositionEvaluation } from './types'
@@ -680,12 +680,12 @@ export function computeMoveEvalDelta(
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/shared/engineMath.test.ts`
 Expected: PASS (10 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/shared/engineMath.ts src/shared/engineMath.test.ts
@@ -704,7 +704,7 @@ git commit -m "Add shared engine-math: cp-to-win% and per-move eval delta"
 - Consumes: `MoveEvalDelta` from `src/shared/engineMath.ts` (Task 3).
 - Produces: `moveAccuracy(delta: MoveEvalDelta): number` and `gameAccuracy(accuracies: number[]): number` — consumed by `gameAnalyzer.ts` (Task 8).
 
-- [ ] **Step 1: Write the failing test at `src/main/analysis/accuracy.test.ts`**
+- [x] **Step 1: Write the failing test at `src/main/analysis/accuracy.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -754,12 +754,12 @@ describe('gameAccuracy', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/main/analysis/accuracy.test.ts`
 Expected: FAIL — `Cannot find module './accuracy'`.
 
-- [ ] **Step 3: Write `src/main/analysis/accuracy.ts`**
+- [x] **Step 3: Write `src/main/analysis/accuracy.ts`**
 
 ```ts
 import { cpToWinPercent } from '../../shared/engineMath'
@@ -780,12 +780,12 @@ export function gameAccuracy(accuracies: number[]): number {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/main/analysis/accuracy.test.ts`
 Expected: PASS (6 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/analysis/accuracy.ts src/main/analysis/accuracy.test.ts
@@ -806,7 +806,7 @@ git commit -m "Add per-move and per-game accuracy formulas"
 - Consumes: `MoveClassification` from `src/shared/types.ts` (Task 2).
 - Produces: `isBookMove(sanHistory: string[], ply: number): boolean` and `classifyMove(input: ClassifyMoveInput): MoveClassification` — both consumed by `gameAnalyzer.ts` (Task 8).
 
-- [ ] **Step 1: Write the failing test at `src/main/analysis/openingBook.test.ts`**
+- [x] **Step 1: Write the failing test at `src/main/analysis/openingBook.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -830,12 +830,12 @@ describe('isBookMove', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/main/analysis/openingBook.test.ts`
 Expected: FAIL — `Cannot find module './openingBook'`.
 
-- [ ] **Step 3: Write `src/main/analysis/openingBook.ts`**
+- [x] **Step 3: Write `src/main/analysis/openingBook.ts`**
 
 ```ts
 export const OPENING_BOOK_LINES: string[][] = [
@@ -865,12 +865,12 @@ export function isBookMove(sanHistory: string[], ply: number): boolean {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/main/analysis/openingBook.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Write the failing test at `src/main/analysis/classification.test.ts`**
+- [x] **Step 5: Write the failing test at `src/main/analysis/classification.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -928,12 +928,12 @@ describe('classifyMove', () => {
 })
 ```
 
-- [ ] **Step 6: Run the test to verify it fails**
+- [x] **Step 6: Run the test to verify it fails**
 
 Run: `npx vitest run src/main/analysis/classification.test.ts`
 Expected: FAIL — `Cannot find module './classification'`.
 
-- [ ] **Step 7: Write `src/main/analysis/classification.ts`**
+- [x] **Step 7: Write `src/main/analysis/classification.ts`**
 
 ```ts
 import type { MoveClassification } from '../../shared/types'
@@ -978,12 +978,12 @@ export function classifyMove(input: ClassifyMoveInput): MoveClassification {
 }
 ```
 
-- [ ] **Step 8: Run the test to verify it passes**
+- [x] **Step 8: Run the test to verify it passes**
 
 Run: `npx vitest run src/main/analysis/classification.test.ts`
 Expected: PASS (9 tests).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/main/analysis/openingBook.ts src/main/analysis/openingBook.test.ts src/main/analysis/classification.ts src/main/analysis/classification.test.ts
@@ -1002,7 +1002,7 @@ git commit -m "Add opening book matcher and move classification"
 - Consumes: `EngineLine`, `PositionEvaluation` from `src/shared/types.ts` (Task 2).
 - Produces: `class StockfishManager` with `start(): Promise<void>`, `evaluatePosition(fen: string, options: { depth: number; multiPv?: number }): Promise<PositionEvaluation>`, `stop(): void` — consumed by `gameAnalyzer.ts` (Task 8) and `ipc/handlers.ts` (Task 10).
 
-- [ ] **Step 1: Write the failing test at `src/main/engine/stockfishManager.test.ts`**
+- [x] **Step 1: Write the failing test at `src/main/engine/stockfishManager.test.ts`**
 
 ```ts
 import { describe, it, expect, vi } from 'vitest'
@@ -1109,12 +1109,12 @@ describe('StockfishManager', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/main/engine/stockfishManager.test.ts`
 Expected: FAIL — `Cannot find module './stockfishManager'`.
 
-- [ ] **Step 3: Write `src/main/engine/stockfishManager.ts`**
+- [x] **Step 3: Write `src/main/engine/stockfishManager.ts`**
 
 ```ts
 import { spawn } from 'node:child_process'
@@ -1242,12 +1242,12 @@ function parseInfoLine(line: string): { multiPv: number; line: EngineLine } | nu
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/main/engine/stockfishManager.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/engine/stockfishManager.ts src/main/engine/stockfishManager.test.ts
@@ -1265,7 +1265,7 @@ git commit -m "Add Stockfish UCI manager with MultiPV support"
 **Interfaces:**
 - Produces: a working `vendor/stockfish/stockfish` (or `.exe`) binary on disk, and `getStockfishBinaryPath(): string` — consumed by `ipc/handlers.ts` (Task 10). No automated test (network/OS operation); verified manually.
 
-- [ ] **Step 1: Write `scripts/downloadStockfish.mjs`**
+- [x] **Step 1: Write `scripts/downloadStockfish.mjs`**
 
 ```js
 #!/usr/bin/env node
@@ -1366,7 +1366,7 @@ main().catch((err) => {
 })
 ```
 
-- [ ] **Step 2: Write `src/main/engine/stockfishPath.ts`**
+- [x] **Step 2: Write `src/main/engine/stockfishPath.ts`**
 
 ```ts
 import { app } from 'electron'
@@ -1378,17 +1378,17 @@ export function getStockfishBinaryPath(): string {
 }
 ```
 
-- [ ] **Step 3: Run the download script**
+- [x] **Step 3: Run the download script**
 
 Run: `npm run setup:stockfish`
 Expected: downloads and extracts to `vendor/stockfish/stockfish` (or `.exe` on Windows), prints `Stockfish installed at ...`.
 
-- [ ] **Step 4: Manually verify the binary works**
+- [x] **Step 4: Manually verify the binary works**
 
 Run: `echo -e "uci\nisready\nposition startpos\ngo depth 10\nquit" | ./vendor/stockfish/stockfish`
 Expected: prints engine options, then `uciok`, `readyok`, several `info depth ... score cp ... pv ...` lines, and a final `bestmove ...` line.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/downloadStockfish.mjs src/main/engine/stockfishPath.ts
@@ -1409,7 +1409,7 @@ git commit -m "Add Stockfish download script and binary path resolution"
 - Consumes: `AnalyzedPosition`, `AnalyzedMove`, `GameAnalysisResult`, `PositionEvaluation` (Task 2); `computeMoveEvalDelta` (Task 3); `classifyMove` (Task 5); `isBookMove` (Task 5); `moveAccuracy`, `gameAccuracy` (Task 4).
 - Produces: `analyzeGame(positions, engine, options): Promise<GameAnalysisResult | { cancelled: true }>` — consumed by `ipc/handlers.ts` (Task 10). Takes any object shaped like `{ evaluatePosition(fen, opts): Promise<PositionEvaluation> }` for `engine`, so `StockfishManager` (Task 6) satisfies it structurally.
 
-- [ ] **Step 1: Write the failing test at `src/main/analysis/gameAnalyzer.test.ts`**
+- [x] **Step 1: Write the failing test at `src/main/analysis/gameAnalyzer.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -1506,12 +1506,12 @@ describe('analyzeGame', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/main/analysis/gameAnalyzer.test.ts`
 Expected: FAIL — `Cannot find module './gameAnalyzer'`.
 
-- [ ] **Step 3: Write `src/main/analysis/gameAnalyzer.ts`**
+- [x] **Step 3: Write `src/main/analysis/gameAnalyzer.ts`**
 
 ```ts
 import type { AnalyzedPosition, AnalyzedMove, GameAnalysisResult, PositionEvaluation } from '../../shared/types'
@@ -1582,12 +1582,12 @@ export async function analyzeGame(
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/main/analysis/gameAnalyzer.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/analysis/gameAnalyzer.ts src/main/analysis/gameAnalyzer.test.ts
@@ -1606,7 +1606,7 @@ git commit -m "Add game analysis orchestrator with streaming progress and cancel
 - Consumes: `ChessComGameSummary` from `src/shared/types.ts` (Task 2).
 - Produces: `fetchRecentGames(username: string, limit?: number): Promise<ChessComGameSummary[]>` and `ChessComFetchError` — consumed by `ipc/handlers.ts` (Task 10).
 
-- [ ] **Step 1: Write the failing test at `src/main/chesscom/chessComClient.test.ts`**
+- [x] **Step 1: Write the failing test at `src/main/chesscom/chessComClient.test.ts`**
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -1672,12 +1672,12 @@ describe('fetchRecentGames', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/main/chesscom/chessComClient.test.ts`
 Expected: FAIL — `Cannot find module './chessComClient'`.
 
-- [ ] **Step 3: Write `src/main/chesscom/chessComClient.ts`**
+- [x] **Step 3: Write `src/main/chesscom/chessComClient.ts`**
 
 ```ts
 import type { ChessComGameSummary } from '../../shared/types'
@@ -1758,12 +1758,12 @@ export async function fetchRecentGames(
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/main/chesscom/chessComClient.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/chesscom/chessComClient.ts src/main/chesscom/chessComClient.test.ts
@@ -1784,7 +1784,7 @@ git commit -m "Add chess.com Published-Data API client"
 - Consumes: `StockfishManager` (Task 6), `getStockfishBinaryPath` (Task 7), `analyzeGame` (Task 8), `fetchRecentGames`/`ChessComFetchError` (Task 9), `ChessAPI`/`AnalyzedPosition` (Task 2).
 - Produces: `window.chessAPI` (the `ChessAPI` interface) available in the renderer — consumed by every renderer task from here on (11-14).
 
-- [ ] **Step 1: Write `src/shared/ipc.ts`**
+- [x] **Step 1: Write `src/shared/ipc.ts`**
 
 ```ts
 export const IPC_CHANNELS = {
@@ -1796,7 +1796,7 @@ export const IPC_CHANNELS = {
 } as const
 ```
 
-- [ ] **Step 2: Replace `src/preload/index.ts`**
+- [x] **Step 2: Replace `src/preload/index.ts`**
 
 ```ts
 import { contextBridge, ipcRenderer } from 'electron'
@@ -1819,7 +1819,7 @@ const chessAPI: ChessAPI = {
 contextBridge.exposeInMainWorld('chessAPI', chessAPI)
 ```
 
-- [ ] **Step 3: Write `src/main/ipc/handlers.ts`**
+- [x] **Step 3: Write `src/main/ipc/handlers.ts`**
 
 ```ts
 import { ipcMain, dialog } from 'electron'
@@ -1900,7 +1900,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 }
 ```
 
-- [ ] **Step 4: Modify `src/main/index.ts` to register the handlers**
+- [x] **Step 4: Modify `src/main/index.ts` to register the handlers**
 
 Replace the `app.whenReady().then(...)` block with:
 
@@ -1921,7 +1921,7 @@ app.whenReady().then(() => {
 
 (Add the `import { registerIpcHandlers } from './ipc/handlers'` line at the top of the file alongside the existing imports; replace only the body of `app.whenReady().then(...)`, keep everything else in the file unchanged.)
 
-- [ ] **Step 5: Manually verify the IPC surface**
+- [x] **Step 5: Manually verify the IPC surface**
 
 Run: `npm run dev`, open DevTools in the app window (View menu or Ctrl+Shift+I), and in the console run:
 
@@ -1931,7 +1931,7 @@ await window.chessAPI.fetchChessComGames('hikaru')
 
 Expected: resolves to an array of game summary objects (or `{ error: ... }` if offline — either is fine, it confirms the IPC round-trip works).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/shared/ipc.ts src/preload/index.ts src/main/ipc/handlers.ts src/main/index.ts
@@ -1952,7 +1952,7 @@ git commit -m "Wire up Electron IPC: analyze-game, open-pgn-file, chesscom fetch
 - Consumes: `AnalyzedPosition`, `AnalyzedMove`, `GameAnalysisResult`, `ChessAPI` from `src/shared/types.ts` (Task 2); `window.chessAPI` from Task 10.
 - Produces: `analysisReducer`, `INITIAL_STATE`, `AnalysisState`, `AnalysisAction` types; `useGameAnalysis()` hook returning `{ state, startAnalysis, cancelAnalysis, reset }` — consumed by `App.tsx` (Task 14).
 
-- [ ] **Step 1: Write the failing test at `src/renderer/src/lib/analysisReducer.test.ts`**
+- [x] **Step 1: Write the failing test at `src/renderer/src/lib/analysisReducer.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -2015,12 +2015,12 @@ describe('analysisReducer', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/renderer/src/lib/analysisReducer.test.ts`
 Expected: FAIL — `Cannot find module './analysisReducer'`.
 
-- [ ] **Step 3: Write `src/renderer/src/lib/analysisReducer.ts`**
+- [x] **Step 3: Write `src/renderer/src/lib/analysisReducer.ts`**
 
 ```ts
 import type { AnalyzedMove, AnalyzedPosition, GameAnalysisResult } from '../../../shared/types'
@@ -2085,12 +2085,12 @@ export function analysisReducer(state: AnalysisState, action: AnalysisAction): A
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/renderer/src/lib/analysisReducer.test.ts`
 Expected: PASS (5 tests).
 
-- [ ] **Step 5: Write `src/renderer/src/env.d.ts`**
+- [x] **Step 5: Write `src/renderer/src/env.d.ts`**
 
 ```ts
 /// <reference types="vite/client" />
@@ -2105,7 +2105,7 @@ declare global {
 export {}
 ```
 
-- [ ] **Step 6: Write `src/renderer/src/hooks/useGameAnalysis.ts`**
+- [x] **Step 6: Write `src/renderer/src/hooks/useGameAnalysis.ts`**
 
 ```ts
 import { useCallback, useEffect, useReducer, useRef } from 'react'
@@ -2150,7 +2150,7 @@ export function useGameAnalysis(): {
 }
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/renderer/src/lib/analysisReducer.ts src/renderer/src/lib/analysisReducer.test.ts src/renderer/src/hooks/useGameAnalysis.ts src/renderer/src/env.d.ts
@@ -2168,7 +2168,7 @@ git commit -m "Add renderer analysis state: reducer and useGameAnalysis hook"
 - Consumes: `ChessComGameSummary` from `src/shared/types.ts` (Task 2); `window.chessAPI.openPgnFile` / `window.chessAPI.fetchChessComGames` from Task 10.
 - Produces: `<ImportModal onGameLoaded={(pgn: string) => void} />` — consumed by `App.tsx` (Task 14). No automated test (UI component); verified manually in Task 14's end-to-end check.
 
-- [ ] **Step 1: Write `src/renderer/src/components/ImportModal.tsx`**
+- [x] **Step 1: Write `src/renderer/src/components/ImportModal.tsx`**
 
 ```tsx
 import { useState } from 'react'
@@ -2288,7 +2288,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/renderer/src/components/ImportModal.tsx
@@ -2309,11 +2309,11 @@ git commit -m "Add game import UI: paste, upload, chess.com search"
 - Consumes: `effectiveCp`, `cpToWinPercent` from `src/shared/engineMath.ts` (Task 3); `PositionEvaluation`, `AnalyzedMove` from `src/shared/types.ts` (Task 2).
 - Produces: `whiteWinPercent(evaluation, sideToMove): number`, `formatScore(evaluation, sideToMove): string`, `getPositionAtPly(moves, ply): PositionAtPly`, `STARTING_FEN`, `<Board fen bestMoveUci />`, `<EvalBar whiteWinPercent displayScore />` — consumed by `App.tsx` (Task 14). No automated test (visual components + already-tested math); verified manually in Task 14.
 
-- [ ] **Step 1: Install react-chessboard**
+- [x] **Step 1: Install react-chessboard**
 
 Run: `npm install react-chessboard@^5.10.0`
 
-- [ ] **Step 2: Write `src/renderer/src/lib/displayEval.ts`**
+- [x] **Step 2: Write `src/renderer/src/lib/displayEval.ts`**
 
 ```ts
 import type { PositionEvaluation } from '../../../shared/types'
@@ -2338,7 +2338,7 @@ export function formatScore(evaluation: PositionEvaluation, sideToMove: 'w' | 'b
 }
 ```
 
-- [ ] **Step 3: Write `src/renderer/src/lib/gameNavigation.ts`**
+- [x] **Step 3: Write `src/renderer/src/lib/gameNavigation.ts`**
 
 ```ts
 import type { AnalyzedMove, PositionEvaluation } from '../../../shared/types'
@@ -2373,7 +2373,7 @@ export function getPositionAtPly(moves: AnalyzedMove[], ply: number): PositionAt
 }
 ```
 
-- [ ] **Step 4: Write `src/renderer/src/components/Board.tsx`**
+- [x] **Step 4: Write `src/renderer/src/components/Board.tsx`**
 
 ```tsx
 import { Chessboard } from 'react-chessboard'
@@ -2410,7 +2410,7 @@ export function Board({ fen, bestMoveUci }: BoardProps): JSX.Element {
 }
 ```
 
-- [ ] **Step 5: Write `src/renderer/src/components/EvalBar.tsx`**
+- [x] **Step 5: Write `src/renderer/src/components/EvalBar.tsx`**
 
 ```tsx
 interface EvalBarProps {
@@ -2429,7 +2429,7 @@ export function EvalBar({ whiteWinPercent, displayScore }: EvalBarProps): JSX.El
 }
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add package.json package-lock.json src/renderer/src/lib/displayEval.ts src/renderer/src/lib/gameNavigation.ts src/renderer/src/components/Board.tsx src/renderer/src/components/EvalBar.tsx
@@ -2452,11 +2452,11 @@ git commit -m "Add board and eval bar with best-move arrow overlay"
 - Consumes: everything from Tasks 2-13 (`AnalyzedMove`, `MoveClassification`, `useGameAnalysis`, `ImportModal`, `Board`, `EvalBar`, `parsePgn`/`PgnParseError`, `getPositionAtPly`, `formatScore`/`whiteWinPercent`).
 - Produces: the complete, runnable app. No automated test (top-level composition); verified end-to-end manually in this task's final step.
 
-- [ ] **Step 1: Install recharts**
+- [x] **Step 1: Install recharts**
 
 Run: `npm install recharts@^3.9.2`
 
-- [ ] **Step 2: Write `src/renderer/src/components/MoveList.tsx`**
+- [x] **Step 2: Write `src/renderer/src/components/MoveList.tsx`**
 
 ```tsx
 import type { AnalyzedMove, MoveClassification } from '../../../shared/types'
@@ -2524,7 +2524,7 @@ export function MoveList({ moves, currentPly, onSelectPly }: MoveListProps): JSX
 }
 ```
 
-- [ ] **Step 3: Write `src/renderer/src/components/EvalGraph.tsx`**
+- [x] **Step 3: Write `src/renderer/src/components/EvalGraph.tsx`**
 
 ```tsx
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
@@ -2575,7 +2575,7 @@ export function EvalGraph({ moves, currentPly, onSelectPly }: EvalGraphProps): J
 }
 ```
 
-- [ ] **Step 4: Write `src/renderer/src/components/GameSummary.tsx`**
+- [x] **Step 4: Write `src/renderer/src/components/GameSummary.tsx`**
 
 ```tsx
 import type { AnalyzedMove, MoveClassification } from '../../../shared/types'
@@ -2658,7 +2658,7 @@ export function GameSummary({
 }
 ```
 
-- [ ] **Step 5: Write `src/renderer/src/app.css`**
+- [x] **Step 5: Write `src/renderer/src/app.css`**
 
 ```css
 :root {
@@ -2861,7 +2861,7 @@ body {
 }
 ```
 
-- [ ] **Step 6: Replace `src/renderer/src/App.tsx`**
+- [x] **Step 6: Replace `src/renderer/src/App.tsx`**
 
 ```tsx
 import { useMemo, useState } from 'react'
@@ -2964,16 +2964,16 @@ function App(): JSX.Element {
 export default App
 ```
 
-- [ ] **Step 7: Modify `src/renderer/src/main.tsx` to import the stylesheet**
+- [x] **Step 7: Modify `src/renderer/src/main.tsx` to import the stylesheet**
 
 Add `import './app.css'` as the first line of `src/renderer/src/main.tsx`.
 
-- [ ] **Step 8: Run the full test suite**
+- [x] **Step 8: Run the full test suite**
 
 Run: `npm test`
 Expected: all tests across every task pass (pgn, engineMath, accuracy, openingBook, classification, stockfishManager, gameAnalyzer, chessComClient, analysisReducer, sanity).
 
-- [ ] **Step 9: End-to-end manual verification**
+- [x] **Step 9: End-to-end manual verification**
 
 Run: `npm run dev`, then in the app:
 1. Paste a short PGN (e.g. `1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 1-0`) into the Paste tab and click "Load Game".
@@ -2989,7 +2989,7 @@ Run: `npm run dev`, then in the app:
 6. Temporarily rename `vendor/stockfish/stockfish` (e.g. to `stockfish.bak`), reload the app, and try to analyze a game.
    Expected: an in-app error message about Stockfish, no crash. Rename it back afterward.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/renderer/src/components/MoveList.tsx src/renderer/src/components/EvalGraph.tsx src/renderer/src/components/GameSummary.tsx src/renderer/src/app.css src/renderer/src/App.tsx src/renderer/src/main.tsx package.json package-lock.json
