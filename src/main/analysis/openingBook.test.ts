@@ -16,4 +16,15 @@ describe('isBookMove', () => {
   it('returns false for an opening not in the book', () => {
     expect(isBookMove(['a4'], 1)).toBe(false)
   })
+
+  it('recognizes the Ruy Lopez main line through 5.O-O Be7, including 3...a6', () => {
+    // Regression test: 3...a6 in the Ruy Lopez is a completely standard
+    // theoretical move, but the book previously stopped at 3.Bb5, so a6
+    // fell through to the sacrifice/brilliant heuristic instead of being
+    // tagged "book".
+    const history = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6', 'Ba4', 'Nf6', 'O-O', 'Be7']
+    for (let ply = 1; ply <= history.length; ply++) {
+      expect(isBookMove(history, ply)).toBe(true)
+    }
+  })
 })
