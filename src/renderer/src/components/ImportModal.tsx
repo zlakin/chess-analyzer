@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChessComGameSummary } from '../../../shared/types'
 
 interface ImportModalProps {
@@ -14,6 +14,12 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
   const [username, setUsername] = useState('')
   const [chessComGames, setChessComGames] = useState<ChessComGameSummary[]>([])
   const [isFetching, setIsFetching] = useState(false)
+
+  useEffect(() => {
+    window.chessAPI.getSettings().then((settings) => {
+      if (settings.chessComUsername) setUsername(settings.chessComUsername)
+    })
+  }, [])
 
   const handlePasteSubmit = (): void => {
     if (pasteText.trim().length === 0) {
@@ -48,6 +54,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
       setError(result.error)
     } else {
       setChessComGames(result)
+      void window.chessAPI.setChessComUsername(username)
     }
   }
 
