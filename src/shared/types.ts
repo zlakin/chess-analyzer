@@ -1,3 +1,7 @@
+export interface AppSettings {
+  chessComUsername: string | null
+}
+
 export interface AnalyzedPosition {
   ply: number
   moveNumber: number
