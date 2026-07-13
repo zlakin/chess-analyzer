@@ -17,7 +17,9 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
 
   useEffect(() => {
     window.chessAPI.getSettings().then((settings) => {
-      if (settings.chessComUsername) setUsername(settings.chessComUsername)
+      if (settings.chessComUsername) {
+        setUsername((current) => (current === '' ? settings.chessComUsername! : current))
+      }
     })
   }, [])
 
