@@ -7,6 +7,7 @@ import { StockfishManager } from '../engine/stockfishManager'
 import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, ChessComFetchError } from '../chesscom/chessComClient'
+import { loadSettings, saveSettings } from '../settings/settingsStore'
 import { AnalysisRunTracker } from './analysisRunTracker'
 
 const ANALYSIS_DEPTH_DEFAULT = 18
@@ -85,5 +86,13 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       if (err instanceof ChessComFetchError) return { error: err.message }
       return { error: `Unexpected error: ${(err as Error).message}` }
     }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.getSettings, async () => {
+    return loadSettings()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.setChessComUsername, async (_event, username: string) => {
+    return saveSettings({ chessComUsername: username })
   })
 }

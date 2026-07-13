@@ -73,4 +73,6 @@ export interface ChessAPI {
   cancelAnalysis(): void
   openPgnFile(): Promise<{ pgn: string } | { cancelled: true } | { error: string }>
   fetchChessComGames(username: string): Promise<ChessComGameSummary[] | { error: string }>
+  getSettings(): Promise<AppSettings>
+  setChessComUsername(username: string): Promise<AppSettings>
 }

@@ -12,7 +12,10 @@ const chessAPI: ChessAPI = {
   },
   cancelAnalysis: () => ipcRenderer.send(IPC_CHANNELS.cancelAnalysis),
   openPgnFile: () => ipcRenderer.invoke(IPC_CHANNELS.openPgnFile),
-  fetchChessComGames: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComGames, username)
+  fetchChessComGames: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComGames, username),
+  getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getSettings),
+  setChessComUsername: (username: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.setChessComUsername, username)
 }
 
 contextBridge.exposeInMainWorld('chessAPI', chessAPI)
