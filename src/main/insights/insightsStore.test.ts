@@ -14,7 +14,14 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { loadScanMeta, saveScanMeta, isGameScanned, saveGameRecord, loadAllGameRecords } from './insightsStore'
+import {
+  loadScanMeta,
+  saveScanMeta,
+  isGameScanned,
+  saveGameRecord,
+  loadAllGameRecords,
+  ensureUsernameScope
+} from './insightsStore'
 import type { GameInsightRecord } from '../../shared/types'
 
 function record(gameUrl: string): GameInsightRecord {
@@ -61,6 +68,53 @@ describe('insightsStore', () => {
     writeFileSync(join(dir, fileName), '{not valid json', 'utf-8')
 
     expect(isGameScanned('https://www.chess.com/game/live/1')).toBe(false)
+  })
+
+  it('still treats a game as scanned when scan-meta.json is corrupted but its own cache file is intact', () => {
+    saveGameRecord(record('https://www.chess.com/game/live/1'))
+    writeFileSync(join(userDataDir, 'scan-meta.json'), '{not valid json', 'utf-8')
+
+    expect(isGameScanned('https://www.chess.com/game/live/1')).toBe(true)
+  })
+
+  describe('ensureUsernameScope', () => {
+    it('records the username on the very first scan without clearing anything', () => {
+      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      ensureUsernameScope('hikaru')
+
+      expect(loadScanMeta().username).toBe('hikaru')
+      expect(loadAllGameRecords()).toHaveLength(1)
+    })
+
+    it('is a no-op when the username is unchanged (case-insensitively)', () => {
+      ensureUsernameScope('hikaru')
+      saveGameRecord(record('https://www.chess.com/game/live/1'))
+
+      ensureUsernameScope('Hikaru')
+
+      expect(loadAllGameRecords()).toHaveLength(1)
+    })
+
+    it('clears all cached game records and resets scan metadata when the tracked username changes', () => {
+      ensureUsernameScope('hikaru')
+      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      saveGameRecord(record('https://www.chess.com/game/live/2'))
+
+      ensureUsernameScope('magnuscarlsen')
+
+      expect(loadAllGameRecords()).toEqual([])
+      expect(loadScanMeta()).toEqual({ username: 'magnuscarlsen', lastScanTime: null, scannedUrls: [] })
+    })
+
+    it('records the username immediately, before any games are cached, so an interrupted scan is not mistaken for having no tracked user', () => {
+      ensureUsernameScope('hikaru')
+      // Simulate a scan that cached nothing yet (e.g. it was interrupted
+      // before the first game finished analysis) -- username should still
+      // be recorded so a later switch to a different username is detected.
+      ensureUsernameScope('magnuscarlsen')
+
+      expect(loadScanMeta().username).toBe('magnuscarlsen')
+    })
   })
 
   it('loadAllGameRecords returns every saved record and skips corrupted files', () => {

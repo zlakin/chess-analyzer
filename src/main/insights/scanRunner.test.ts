@@ -5,6 +5,7 @@ const fetchRecentGamesMock = vi.fn()
 const isGameScannedMock = vi.fn()
 const saveGameRecordMock = vi.fn()
 const saveScanMetaMock = vi.fn()
+const ensureUsernameScopeMock = vi.fn()
 
 vi.mock('../chesscom/chessComClient', () => ({
   fetchRecentGames: (username: string, limit?: number) => fetchRecentGamesMock(username, limit)
@@ -13,7 +14,8 @@ vi.mock('../chesscom/chessComClient', () => ({
 vi.mock('./insightsStore', () => ({
   isGameScanned: (url: string) => isGameScannedMock(url),
   saveGameRecord: (record: unknown) => saveGameRecordMock(record),
-  saveScanMeta: (patch: unknown) => saveScanMetaMock(patch)
+  saveScanMeta: (patch: unknown) => saveScanMetaMock(patch),
+  ensureUsernameScope: (username: string) => ensureUsernameScopeMock(username)
 }))
 
 import { runScan } from './scanRunner'
@@ -49,7 +51,16 @@ describe('runScan', () => {
     isGameScannedMock.mockReset()
     saveGameRecordMock.mockReset()
     saveScanMetaMock.mockReset()
+    ensureUsernameScopeMock.mockReset()
     isGameScannedMock.mockReturnValue(false)
+  })
+
+  it('scopes the cache to the tracked username before fetching any games', async () => {
+    fetchRecentGamesMock.mockResolvedValue([])
+
+    await runScan('testuser', { createEngine: fakeEngine })
+
+    expect(ensureUsernameScopeMock).toHaveBeenCalledWith('testuser')
   })
 
   it('skips games that are already scanned', async () => {
