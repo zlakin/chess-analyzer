@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isBookMove } from './openingBook'
+import { isBookMove, matchOpeningName } from './openingBook'
 
 describe('isBookMove', () => {
   it('recognizes the start of the Ruy Lopez', () => {
@@ -26,5 +26,20 @@ describe('isBookMove', () => {
     for (let ply = 1; ply <= history.length; ply++) {
       expect(isBookMove(history, ply)).toBe(true)
     }
+  })
+})
+
+describe('matchOpeningName', () => {
+  it('identifies a game that fully completes a known book line', () => {
+    const sanHistory = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6', 'Ba4', 'Nf6', 'O-O', 'Be7', 'Re1', 'b5']
+    expect(matchOpeningName(sanHistory)).toBe('Ruy Lopez, Morphy Defense')
+  })
+
+  it('returns null for a game that deviates before completing any book line', () => {
+    expect(matchOpeningName(['e4', 'e5', 'Nf3', 'd6'])).toBeNull()
+  })
+
+  it('returns null for a game shorter than every book line', () => {
+    expect(matchOpeningName(['e4', 'e5'])).toBeNull()
   })
 })
