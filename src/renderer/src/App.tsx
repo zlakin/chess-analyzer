@@ -66,7 +66,11 @@ function App(): JSX.Element {
 
   return (
     <div className="app">
-      <NavBar activeTab={activeTab} onSelectTab={setActiveTab} />
+      <NavBar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        isAnalyzing={state.status === 'analyzing'}
+      />
       <main className="app-content">
         {activeTab === 'analyze' && (
           <>
