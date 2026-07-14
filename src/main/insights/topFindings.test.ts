@@ -65,6 +65,31 @@ describe('synthesizeTopFindings', () => {
     expect(findings.some((f) => f.text.includes('Caro-Kann'))).toBe(true)
   })
 
+  it('does not surface a time-pressure finding when the count is a small share of a large sample', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [bucket({ totalMistakes: 200, timePressureCount: 5 })]
+    }
+    const findings = synthesizeTopFindings(report)
+    expect(findings.some((f) => f.text.includes('little time'))).toBe(false)
+  })
+
+  it('gates a time-pressure finding by share of mistakes, not just raw count', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [
+        bucket({ key: 'overall', totalMistakes: 5, timePressureCount: 5 }),
+        bucket({ key: 'bullet', totalMistakes: 200, timePressureCount: 5 })
+      ]
+    }
+    const findings = synthesizeTopFindings(report)
+    const timePressureFindings = findings.filter((f) => f.text.includes('little time'))
+    expect(timePressureFindings).toHaveLength(1)
+    expect(timePressureFindings[0].text).toContain('5 of your mistakes')
+  })
+
   it('ranks findings by significance, most significant first', () => {
     const report: Omit<InsightsReport, 'topFindings'> = {
       gamesScanned: 20,

@@ -5,6 +5,7 @@ const PHASE_SHARE_THRESHOLD = 0.5
 const MIN_MISTAKES_FOR_HUNGPIECE_FINDING = 5
 const HUNGPIECE_SHARE_THRESHOLD = 0.3
 const MIN_TIME_PRESSURE_FOR_FINDING = 3
+const TIME_PRESSURE_SHARE_THRESHOLD = 0.3
 const ACCURACY_GAP_FOR_OPENING_FINDING = 5
 
 function bucketLabel(bucket: InsightsBucket): string {
@@ -49,10 +50,14 @@ function hungPieceFinding(bucket: InsightsBucket): TopFinding | null {
 
 function timePressureFinding(bucket: InsightsBucket): TopFinding | null {
   if (bucket.timePressureCount < MIN_TIME_PRESSURE_FOR_FINDING) return null
+  if (bucket.totalMistakes === 0) return null
+
+  const share = bucket.timePressureCount / bucket.totalMistakes
+  if (share < TIME_PRESSURE_SHARE_THRESHOLD) return null
 
   return {
     text: `${bucket.timePressureCount} of your mistakes were made with very little time on the clock${bucketLabel(bucket)}`,
-    significance: bucket.timePressureCount
+    significance: share * bucket.totalMistakes
   }
 }
 
