@@ -82,6 +82,17 @@ rather than a descendant combinator like `.import-panel textarea`.
   OS mouse cursor's actual on-screen position can rest over the chart
   between driver commands. Not an app bug; move the mouse or click
   elsewhere first if it's in the way of what you're checking.
+- **The session runs under native Wayland** (`XDG_SESSION_TYPE=wayland`),
+  not X11 directly — Electron's Ozone platform auto-detection picks native
+  Wayland when it's available, and in this environment that hangs
+  indefinitely before ever creating a GPU or renderer process (`ps` shows
+  only the browser process, spinning at ~40-45% CPU with no children of
+  type `gpu-process`/`renderer`, even after 90s). `driver.mjs` already
+  passes `--ozone-platform=x11` to force XWayland, which launches normally
+  in a few seconds — if you ever see the driver's `launch` step time out
+  again, check `ps aux | grep electron` for this exact symptom (CPU-spinning
+  parent, no gpu-process/renderer children) before assuming it's an app
+  bug.
 
 ## Run (human path)
 

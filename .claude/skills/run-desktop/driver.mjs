@@ -17,7 +17,14 @@ const COMMANDS = {
   async launch() {
     app = await electron.launch({
       executablePath: electronBin,
-      args: ['--no-sandbox', APP_DIR],
+      // This session runs under native Wayland (XDG_SESSION_TYPE=wayland),
+      // not X11/XWayland as originally assumed -- Electron's Ozone platform
+      // auto-detection picks native Wayland when available, and under this
+      // environment that hangs indefinitely before ever creating a GPU or
+      // renderer process (confirmed via `ps`: the browser process spins at
+      // ~44% CPU with no renderer/gpu-process children). Forcing x11 (i.e.
+      // XWayland) launches normally in a few seconds.
+      args: ['--no-sandbox', '--ozone-platform=x11', APP_DIR],
       timeout: 30_000
     })
     await new Promise((r) => setTimeout(r, 2_000))
