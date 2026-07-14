@@ -67,6 +67,9 @@ textarea {
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .nav-brand {
