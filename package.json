@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "author": "Zachary L",
+  "description": "A free, local desktop chess analyzer with engine evaluation, move-quality classification, and game-history insights.",
   "main": "./out/main/index.js",
   "engines": {
     "node": ">=18.18"
@@ -10,10 +12,30 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "build:linux": "electron-vite build && electron-builder --linux pacman",
     "start": "electron-vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
     "setup:stockfish": "node scripts/downloadStockfish.mjs"
+  },
+  "build": {
+    "appId": "com.chessanalyzer.app",
+    "productName": "Chess Analyzer",
+    "files": ["out/**/*", "package.json"],
+    "directories": {
+      "output": "release"
+    },
+    "extraResources": [
+      {
+        "from": "vendor/stockfish",
+        "to": "vendor/stockfish"
+      }
+    ],
+    "linux": {
+      "target": ["pacman"],
+      "icon": "build/icon.png",
+      "category": "Game"
+    }
   },
   "dependencies": {
     "chess.js": "^1.4.0",
@@ -29,6 +51,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "playwright-core": "^1.61.1",
     "typescript": "^5.5.0",
