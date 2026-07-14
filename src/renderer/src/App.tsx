@@ -9,7 +9,7 @@ import { MoveList } from './components/MoveList'
 import { EvalGraph } from './components/EvalGraph'
 import { GameSummary } from './components/GameSummary'
 import { useGameAnalysis } from './hooks/useGameAnalysis'
-import { parsePgn, PgnParseError } from './lib/pgn'
+import { parsePgn, PgnParseError } from '../../shared/pgn'
 import { getPositionAtPly } from './lib/gameNavigation'
 import { formatScore, whiteWinPercent } from './lib/displayEval'
 

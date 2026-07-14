@@ -56,9 +56,9 @@ describe('classifyMove', () => {
     // Reproduces the false-positive from the final review: in a standard
     // Ruy Lopez (1.e4 e5 2.Nf3 Nc6 3.Bb5 a6), a6's destination square is
     // "attacked" by the bishop on b5, so the coarse sacrifice heuristic in
-    // src/renderer/src/lib/pgn.ts's isPotentialSacrifice flags it as a
+    // src/shared/pgn.ts's isPotentialSacrifice flags it as a
     // potential sacrifice (verified directly by
-    // src/renderer/src/lib/pgn.test.ts and by driving the real analyzeGame
+    // src/shared/pgn.test.ts and by driving the real analyzeGame
     // pipeline with the real Stockfish binary). If it's also the engine's
     // top choice in a non-critical position and the opening book doesn't
     // cover it, classifyMove falls through to the brilliant path. The book

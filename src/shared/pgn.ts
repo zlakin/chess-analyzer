@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js'
-import type { AnalyzedPosition } from '../../../shared/types'
+import type { AnalyzedPosition } from './types'
 
 export class PgnParseError extends Error {}
 
