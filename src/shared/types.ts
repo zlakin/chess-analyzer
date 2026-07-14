@@ -76,3 +76,86 @@ export interface ChessAPI {
   getSettings(): Promise<AppSettings>
   setChessComUsername(username: string): Promise<AppSettings>
 }
+
+export type TimeControlCategory = 'bullet' | 'blitz' | 'rapid' | 'daily'
+
+export type GamePhase = 'opening' | 'middlegame' | 'endgame'
+
+export interface GameInsightMistake {
+  ply: number
+  classification: 'mistake' | 'blunder'
+  phase: GamePhase
+  isHungPiece: boolean
+  clockSecondsRemaining: number | null
+  isTimePressure: boolean
+}
+
+export interface GameInsightRecord {
+  gameUrl: string
+  endTime: number
+  timeControlCategory: TimeControlCategory
+  userColor: 'w' | 'b'
+  result: 'win' | 'loss' | 'draw'
+  openingName: string | null
+  accuracy: number
+  mistakes: GameInsightMistake[]
+}
+
+export interface ScanMeta {
+  username: string | null
+  lastScanTime: number | null
+  scannedUrls: string[]
+}
+
+export interface PhaseBreakdown {
+  opening: number
+  middlegame: number
+  endgame: number
+}
+
+export interface OpeningStat {
+  name: string
+  games: number
+  accuracy: number
+}
+
+export interface TrendPoint {
+  gameIndex: number
+  endTime: number
+  rollingAccuracy: number
+}
+
+export type InsightsBucketKey = 'overall' | TimeControlCategory
+
+export interface InsightsBucket {
+  key: InsightsBucketKey
+  gamesCount: number
+  hasEnoughData: boolean
+  totalMistakes: number
+  averageAccuracy: number
+  phaseBreakdown: PhaseBreakdown
+  hungPieceCount: number
+  positionalCount: number
+  timePressureCount: number
+  weakOpenings: OpeningStat[]
+  trend: TrendPoint[]
+}
+
+export interface TopFinding {
+  text: string
+  significance: number
+}
+
+export interface InsightsReport {
+  gamesScanned: number
+  lastScanTime: number | null
+  topFindings: TopFinding[]
+  buckets: InsightsBucket[]
+}
+
+export interface ScanProgress {
+  scanned: number
+  total: number
+}
+
+export type ScanOutcome = { scanned: number } | { cancelled: true } | { error: string }
