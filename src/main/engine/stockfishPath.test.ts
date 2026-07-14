@@ -19,28 +19,28 @@ describe('getStockfishBinaryPath', () => {
 
   afterEach(() => {
     isPackaged = false
-    Object.defineProperty(process, 'platform', { value: originalPlatform })
-    process.resourcesPath = originalResourcesPath
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+    Object.defineProperty(process, 'resourcesPath', { value: originalResourcesPath, configurable: true })
   })
 
   it('resolves relative to the app root in dev (not packaged)', () => {
     isPackaged = false
-    Object.defineProperty(process, 'platform', { value: 'linux' })
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
 
     expect(getStockfishBinaryPath()).toBe('/dev/app-root/vendor/stockfish/stockfish')
   })
 
   it('resolves relative to process.resourcesPath when packaged', () => {
     isPackaged = true
-    process.resourcesPath = '/packaged/resources'
-    Object.defineProperty(process, 'platform', { value: 'linux' })
+    Object.defineProperty(process, 'resourcesPath', { value: '/packaged/resources', configurable: true })
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
 
     expect(getStockfishBinaryPath()).toBe('/packaged/resources/vendor/stockfish/stockfish')
   })
 
   it('uses the .exe suffix on win32', () => {
     isPackaged = false
-    Object.defineProperty(process, 'platform', { value: 'win32' })
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
 
     expect(getStockfishBinaryPath()).toBe('/dev/app-root/vendor/stockfish/stockfish.exe')
   })
