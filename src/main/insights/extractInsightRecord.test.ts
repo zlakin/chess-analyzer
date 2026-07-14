@@ -88,14 +88,27 @@ describe('extractInsightRecord', () => {
       blackAccuracy: 90
     }
 
-    // NOTE: the plan's brief used '180+2' here, but categorizeTimeControl (Task 6,
-    // already implemented/tested) treats exactly 180s base as 'blitz' (chess.com's own
-    // convention: 3|0 is Blitz, not Bullet) -- see timeControl.ts's own passing test
-    // `categorizeTimeControl('180')` -> 'blitz'. Using 120s here (matching Task 6's own
-    // bullet-boundary fixture '120+1') keeps this test meaningful without touching the
-    // already-shipped Task 6 module.
-    const record = extractInsightRecord(chessComGame({ timeControl: '120+2' }), analysis, 'testuser')
+    // This test only checks that game.timeControl flows into
+    // categorizeTimeControl() -- the increment-aware bucketing formula
+    // itself is covered by timeControl.test.ts, so use a plain base-only
+    // value here where increment can't affect the result.
+    const record = extractInsightRecord(chessComGame({ timeControl: '60' }), analysis, 'testuser')
     expect(record.timeControlCategory).toBe('bullet')
+  })
+
+  it('prefers chess.com\'s own time_class over the raw timeControl heuristic (real "Play vs Coach" data has timeControl "-")', () => {
+    const analysis: GameAnalysisResult = {
+      moves: [move({ ply: 1, color: 'w', san: 'e4', classification: 'book', fenAfter: QUIET_FEN })],
+      whiteAccuracy: 90,
+      blackAccuracy: 90
+    }
+
+    const record = extractInsightRecord(
+      chessComGame({ timeControl: '-', timeClass: 'daily' }),
+      analysis,
+      'testuser'
+    )
+    expect(record.timeControlCategory).toBe('daily')
   })
 
   it('leaves clockSecondsRemaining null and isTimePressure false when the PGN has no clock data', () => {

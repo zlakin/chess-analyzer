@@ -60,6 +60,12 @@ export interface ChessComGameSummary {
   pgn: string
   endTime: number
   timeControl: string
+  // Chess.com's own authoritative bucket ('bullet'/'blitz'/'rapid'/'daily'),
+  // preferred over re-deriving one from `timeControl` when present -- some
+  // game types (e.g. "Play vs Coach") report a non-numeric `timeControl`
+  // like "-" that a raw parse can't categorize correctly. Optional/untyped
+  // since it's straight from the external API and could be absent/unknown.
+  timeClass?: string
   white: ChessComPlayerResult
   black: ChessComPlayerResult
 }

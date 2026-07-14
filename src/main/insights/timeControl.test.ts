@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   categorizeTimeControl,
+  resolveTimeControlCategory,
   parseClockSeconds,
   isTimePressureMove,
   baseSecondsFromTimeControl
@@ -22,8 +23,38 @@ describe('categorizeTimeControl', () => {
     expect(categorizeTimeControl('900+10')).toBe('rapid')
   })
 
+  it('accounts for increment via an estimated 40-move game, not just the base clock', () => {
+    // 30s base but a 3-minute increment plays far slower than bullet.
+    expect(categorizeTimeControl('30+180')).toBe('rapid')
+  })
+
+  it('falls back to a safe default for a malformed, non-numeric time control', () => {
+    expect(categorizeTimeControl('garbage')).toBe('bullet')
+  })
+
   it('categorizes the day-based correspondence format as daily', () => {
     expect(categorizeTimeControl('1/86400')).toBe('daily')
+  })
+})
+
+describe('resolveTimeControlCategory', () => {
+  it('prefers a valid chess.com time_class over the raw time control heuristic', () => {
+    expect(resolveTimeControlCategory('daily', '60')).toBe('daily')
+  })
+
+  it('handles a real chess.com "Play vs Coach" game: a non-numeric timeControl ("-") with time_class "daily"', () => {
+    // Real production data: chess.com's own time_class correctly says
+    // "daily" even though timeControl is the placeholder "-", which a raw
+    // numeric parse can't categorize at all.
+    expect(resolveTimeControlCategory('daily', '-')).toBe('daily')
+  })
+
+  it('falls back to the heuristic when time_class is missing', () => {
+    expect(resolveTimeControlCategory(undefined, '600')).toBe('rapid')
+  })
+
+  it('falls back to the heuristic when time_class is unrecognized', () => {
+    expect(resolveTimeControlCategory('some-future-category', '60')).toBe('bullet')
   })
 })
 

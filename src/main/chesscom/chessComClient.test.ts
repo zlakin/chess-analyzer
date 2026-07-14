@@ -54,6 +54,37 @@ describe('fetchRecentGames', () => {
     expect(games[1].url).toBe('https://www.chess.com/game/live/1')
   })
 
+  it('carries chess.com\'s time_class through as timeClass', async () => {
+    const archivesResponse = {
+      archives: ['https://api.chess.com/pub/player/testuser/games/2026/07']
+    }
+    const gamesResponse = {
+      games: [
+        {
+          url: 'https://www.chess.com/game/daily/1',
+          pgn: '1. e4 e5',
+          end_time: 1000,
+          time_control: '-',
+          time_class: 'daily',
+          white: { username: 'testuser', rating: 1500, result: 'win' },
+          black: { username: 'Coach-Mae', rating: 1600, result: 'checkmated' }
+        }
+      ]
+    }
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.toString().endsWith('/archives')
+          ? new Response(JSON.stringify(archivesResponse), { status: 200 })
+          : new Response(JSON.stringify(gamesResponse), { status: 200 })
+      )
+    )
+
+    const games = await fetchRecentGames('testuser', 10)
+    expect(games[0].timeClass).toBe('daily')
+  })
+
   it('throws ChessComFetchError when the user does not exist', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
 

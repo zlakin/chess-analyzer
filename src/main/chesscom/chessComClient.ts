@@ -14,6 +14,7 @@ interface ChessComGamesResponse {
     pgn?: string
     end_time: number
     time_control: string
+    time_class?: string
     white: { username: string; rating: number; result: string }
     black: { username: string; rating: number; result: string }
   }>
@@ -86,6 +87,7 @@ export async function fetchRecentGames(
         pgn: game.pgn,
         endTime: game.end_time,
         timeControl: game.time_control,
+        timeClass: game.time_class,
         white: game.white,
         black: game.black
       })

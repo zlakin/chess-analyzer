@@ -7,7 +7,7 @@ import type {
 import { gamePhaseAt } from './phaseHeuristic'
 import { isHungPieceBlunder } from './hungPieceDetector'
 import {
-  categorizeTimeControl,
+  resolveTimeControlCategory,
   parseClockSeconds,
   isTimePressureMove,
   baseSecondsFromTimeControl
@@ -61,7 +61,7 @@ export function extractInsightRecord(
   return {
     gameUrl: game.url,
     endTime: game.endTime,
-    timeControlCategory: categorizeTimeControl(game.timeControl),
+    timeControlCategory: resolveTimeControlCategory(game.timeClass, game.timeControl),
     userColor,
     result: resultFor(userColor, game),
     openingName,
