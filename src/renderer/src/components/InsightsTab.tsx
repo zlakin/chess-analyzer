@@ -1,10 +1,14 @@
-import { useInsightsScan } from '../hooks/useInsightsScan'
+import type { InsightsScanState } from '../hooks/useInsightsScan'
 import { TopFindingsList } from './insights/TopFindingsList'
 import { TimeControlSection } from './insights/TimeControlSection'
 
-export function InsightsTab(): JSX.Element {
-  const { state, startScan, cancelScan } = useInsightsScan()
+interface InsightsTabProps {
+  state: InsightsScanState
+  startScan: () => Promise<void>
+  cancelScan: () => void
+}
 
+export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps): JSX.Element {
   const hasReport = state.report !== null && state.report.gamesScanned > 0
 
   return (
@@ -21,6 +25,7 @@ export function InsightsTab(): JSX.Element {
             <span>
               Scanning... {state.progress?.scanned ?? 0} / {state.progress?.total ?? 0}
             </span>
+            <progress value={state.progress?.scanned ?? 0} max={state.progress?.total || 1} />
             <button onClick={cancelScan}>Cancel</button>
           </div>
         ) : (

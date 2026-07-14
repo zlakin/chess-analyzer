@@ -9,6 +9,7 @@ import { MoveList } from './components/MoveList'
 import { EvalGraph } from './components/EvalGraph'
 import { GameSummary } from './components/GameSummary'
 import { useGameAnalysis } from './hooks/useGameAnalysis'
+import { useInsightsScan } from './hooks/useInsightsScan'
 import { parsePgn, PgnParseError } from '../../shared/pgn'
 import { getPositionAtPly } from './lib/gameNavigation'
 import { formatScore, whiteWinPercent } from './lib/displayEval'
@@ -20,6 +21,7 @@ interface Players {
 
 function App(): JSX.Element {
   const { state, startAnalysis, cancelAnalysis, reset } = useGameAnalysis()
+  const insightsScan = useInsightsScan()
   const [currentPly, setCurrentPly] = useState(0)
   const [pgnError, setPgnError] = useState<string | null>(null)
   const [players, setPlayers] = useState<Players>({ white: 'White', black: 'Black' })
@@ -70,6 +72,7 @@ function App(): JSX.Element {
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         isAnalyzing={state.status === 'analyzing'}
+        isScanning={insightsScan.state.status === 'scanning'}
       />
       <main className="app-content">
         {activeTab === 'analyze' && (
@@ -153,7 +156,13 @@ function App(): JSX.Element {
           </>
         )}
 
-        {activeTab === 'insights' && <InsightsTab />}
+        {activeTab === 'insights' && (
+          <InsightsTab
+            state={insightsScan.state}
+            startScan={insightsScan.startScan}
+            cancelScan={insightsScan.cancelScan}
+          />
+        )}
       </main>
     </div>
   )

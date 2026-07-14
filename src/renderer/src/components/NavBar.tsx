@@ -4,9 +4,10 @@ interface NavBarProps {
   activeTab: AppTab
   onSelectTab: (tab: AppTab) => void
   isAnalyzing: boolean
+  isScanning: boolean
 }
 
-export function NavBar({ activeTab, onSelectTab, isAnalyzing }: NavBarProps): JSX.Element {
+export function NavBar({ activeTab, onSelectTab, isAnalyzing, isScanning }: NavBarProps): JSX.Element {
   return (
     <header className="nav-bar">
       <span className="nav-brand">Chess Analyzer</span>
@@ -21,7 +22,7 @@ export function NavBar({ activeTab, onSelectTab, isAnalyzing }: NavBarProps): JS
           className={`nav-tab ${activeTab === 'insights' ? 'active' : ''}`}
           onClick={() => onSelectTab('insights')}
         >
-          Insights
+          Insights{isScanning ? ' ⏳' : ''}
         </button>
       </nav>
     </header>

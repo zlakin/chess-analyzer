@@ -11,8 +11,8 @@ export function TopFindingsList({ findings }: TopFindingsListProps): JSX.Element
 
   return (
     <ul className="top-findings-list">
-      {findings.slice(0, 8).map((finding) => (
-        <li key={finding.text}>{finding.text}</li>
+      {findings.slice(0, 8).map((finding, index) => (
+        <li key={`${index}-${finding.text}`}>{finding.text}</li>
       ))}
     </ul>
   )
