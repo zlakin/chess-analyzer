@@ -379,17 +379,79 @@ textarea {
 .insights-tab {
   flex: 1;
   min-height: 320px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.insights-empty {
-  flex-direction: column;
-  gap: 1rem;
+.insights-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.insights-last-scan {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.insights-scan-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .insights-empty-message {
   color: var(--text-muted);
   font-size: 1rem;
+}
+
+.insights-report {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.top-findings-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.top-findings-empty {
+  color: var(--text-muted);
+}
+
+.insights-buckets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.time-control-section {
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.bucket-summary {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.not-enough-data {
+  color: var(--text-muted);
+}
+
+.weak-openings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.weak-openings-table th,
+.weak-openings-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.3rem 0.4rem;
+  text-align: left;
 }
