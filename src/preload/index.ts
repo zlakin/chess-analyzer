@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc'
-import type { AnalyzedPosition, AnalyzedMove, ChessAPI } from '../shared/types'
+import type { AnalyzedPosition, AnalyzedMove, ChessAPI, ScanProgress } from '../shared/types'
 
 const chessAPI: ChessAPI = {
   analyzeGame: (positions: AnalyzedPosition[], depth: number) =>
@@ -15,7 +15,15 @@ const chessAPI: ChessAPI = {
   fetchChessComGames: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComGames, username),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getSettings),
   setChessComUsername: (username: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.setChessComUsername, username)
+    ipcRenderer.invoke(IPC_CHANNELS.setChessComUsername, username),
+  scanChessComGames: () => ipcRenderer.invoke(IPC_CHANNELS.scanChessComGames),
+  onScanProgress: (callback: (progress: ScanProgress) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.scanProgress, handler)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.scanProgress, handler)
+  },
+  cancelScan: () => ipcRenderer.send(IPC_CHANNELS.cancelScan),
+  getInsightsReport: () => ipcRenderer.invoke(IPC_CHANNELS.getInsightsReport)
 }
 
 contextBridge.exposeInMainWorld('chessAPI', chessAPI)

@@ -75,6 +75,10 @@ export interface ChessAPI {
   fetchChessComGames(username: string): Promise<ChessComGameSummary[] | { error: string }>
   getSettings(): Promise<AppSettings>
   setChessComUsername(username: string): Promise<AppSettings>
+  scanChessComGames(): Promise<ScanOutcome>
+  onScanProgress(callback: (progress: ScanProgress) => void): () => void
+  cancelScan(): void
+  getInsightsReport(): Promise<InsightsReport>
 }
 
 export type TimeControlCategory = 'bullet' | 'blitz' | 'rapid' | 'daily'

@@ -9,6 +9,10 @@ import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, ChessComFetchError } from '../chesscom/chessComClient'
 import { loadSettings, saveSettings } from '../settings/settingsStore'
 import { AnalysisRunTracker } from './analysisRunTracker'
+import { runScan } from '../insights/scanRunner'
+import { loadAllGameRecords, loadScanMeta } from '../insights/insightsStore'
+import { buildInsightsReport } from '../insights/reportAggregator'
+import { synthesizeTopFindings } from '../insights/topFindings'
 
 const ANALYSIS_DEPTH_DEFAULT = 18
 
@@ -16,6 +20,7 @@ const ANALYSIS_DEPTH_DEFAULT = 18
 // cancel request racing against a newly-started analysis invocation could be
 // silently erased (see AnalysisRunTracker for details).
 const analysisRuns = new AnalysisRunTracker()
+const scanRuns = new AnalysisRunTracker()
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(
@@ -94,5 +99,38 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC_CHANNELS.setChessComUsername, async (_event, username: string) => {
     return saveSettings({ chessComUsername: username })
+  })
+
+  ipcMain.handle(IPC_CHANNELS.scanChessComGames, async () => {
+    const settings = loadSettings()
+    if (!settings.chessComUsername) {
+      return { error: 'Set a chess.com username first by searching for your games in the Analyze tab.' }
+    }
+
+    const runId = scanRuns.start()
+    try {
+      return await runScan(settings.chessComUsername, {
+        isCancelled: () => scanRuns.isCancelled(runId),
+        createEngine: () => new StockfishManager(getStockfishBinaryPath()),
+        onProgress: (progress) => {
+          getWindow()?.webContents.send(IPC_CHANNELS.scanProgress, progress)
+        }
+      })
+    } catch (err) {
+      return { error: `Scan failed: ${(err as Error).message}` }
+    } finally {
+      scanRuns.finish(runId)
+    }
+  })
+
+  ipcMain.on(IPC_CHANNELS.cancelScan, () => {
+    scanRuns.cancelCurrent()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.getInsightsReport, async () => {
+    const records = loadAllGameRecords()
+    const meta = loadScanMeta()
+    const partialReport = buildInsightsReport(records, meta.lastScanTime)
+    return { ...partialReport, topFindings: synthesizeTopFindings(partialReport) }
   })
 }
