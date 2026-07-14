@@ -34,7 +34,8 @@
     "linux": {
       "target": ["pacman"],
       "icon": "build/icon.png",
-      "category": "Game"
+      "category": "Game",
+      "maintainer": "Zachary L <zacharylakin0@gmail.com>"
     }
   },
   "dependencies": {
