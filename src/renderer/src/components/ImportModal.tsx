@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ChessComGameSummary } from '../../../shared/types'
+import { resolvePrefillUsername } from '../lib/resolvePrefillUsername'
 
 interface ImportModalProps {
   onGameLoaded: (pgn: string) => void
@@ -17,9 +18,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
 
   useEffect(() => {
     window.chessAPI.getSettings().then((settings) => {
-      if (settings.chessComUsername) {
-        setUsername((current) => (current === '' ? settings.chessComUsername! : current))
-      }
+      setUsername((current) => resolvePrefillUsername(current, settings.chessComUsername))
     })
   }, [])
 
@@ -43,20 +42,21 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
   }
 
   const handleFindGames = async (): Promise<void> => {
-    if (username.trim().length === 0) {
+    const trimmedUsername = username.trim()
+    if (trimmedUsername.length === 0) {
       setError('Enter a chess.com username')
       return
     }
     setError(null)
     setIsFetching(true)
     setChessComGames([])
-    const result = await window.chessAPI.fetchChessComGames(username)
+    const result = await window.chessAPI.fetchChessComGames(trimmedUsername)
     setIsFetching(false)
     if ('error' in result) {
       setError(result.error)
     } else {
       setChessComGames(result)
-      void window.chessAPI.setChessComUsername(username)
+      void window.chessAPI.setChessComUsername(trimmedUsername)
     }
   }
 
