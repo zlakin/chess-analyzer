@@ -27,7 +27,7 @@ export function EvalGraph({ moves, currentPly, onSelectPly }: EvalGraphProps): J
           <XAxis dataKey="ply" hide />
           <YAxis domain={[0, 100]} hide />
           <ReferenceLine y={50} stroke="#888" strokeDasharray="3 3" />
-          <ReferenceLine x={currentPly} stroke="#4b9fff" />
+          <ReferenceLine x={currentPly} stroke="#7fa650" />
           <Tooltip
             formatter={(value) => {
               if (typeof value === 'number') return `${value.toFixed(0)}%`
@@ -38,8 +38,8 @@ export function EvalGraph({ moves, currentPly, onSelectPly }: EvalGraphProps): J
           <Area
             type="stepAfter"
             dataKey="whiteWinPercent"
-            stroke="#e5e5e5"
-            fill="#e5e5e5"
+            stroke="#ececec"
+            fill="#ececec"
             fillOpacity={0.9}
           />
         </AreaChart>
