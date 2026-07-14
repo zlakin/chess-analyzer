@@ -122,4 +122,26 @@ describe('runScan', () => {
     await expect(runScan('testuser', { createEngine: crashingEngine })).rejects.toThrow('engine crashed')
     expect(saveGameRecordMock).not.toHaveBeenCalled()
   })
+
+  it('calls engine.stop() if engine.start() fails', async () => {
+    fetchRecentGamesMock.mockResolvedValue([game('g1')])
+    const stopMock = vi.fn()
+    const failingEngineFactory = () => ({
+      evaluatePosition: async () => ({
+        lines: [{ depth: 14, scoreCp: 20, scoreMate: null, moveUci: 'e2e4', pv: ['e2e4'] }]
+      }),
+      start: async () => {
+        throw new Error('Stockfish binary not found')
+      },
+      stop: stopMock
+    })
+
+    const result = await runScan('testuser', { createEngine: failingEngineFactory })
+
+    expect(result).toEqual({
+      error: 'Could not start Stockfish: Stockfish binary not found'
+    })
+    expect(stopMock).toHaveBeenCalledOnce()
+    expect(saveGameRecordMock).not.toHaveBeenCalled()
+  })
 })

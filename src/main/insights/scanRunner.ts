@@ -29,6 +29,7 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
   try {
     await engine.start()
   } catch (err) {
+    engine.stop()
     return { error: `Could not start Stockfish: ${(err as Error).message}` }
   }
 
