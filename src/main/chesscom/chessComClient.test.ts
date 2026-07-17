@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchRecentGames, ChessComFetchError } from './chessComClient'
+import { fetchRecentGames, fetchPlayerProfile, ChessComFetchError } from './chessComClient'
 
 describe('fetchRecentGames', () => {
   beforeEach(() => {
@@ -137,5 +137,45 @@ describe('fetchRecentGames', () => {
 
     expect(games).toHaveLength(1)
     expect(games[0].url).toBe('https://www.chess.com/game/live/1')
+  })
+})
+
+describe('fetchPlayerProfile', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('returns the username and location from the player profile', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ username: 'testuser', location: 'New York, USA' }), {
+          status: 200
+        })
+      )
+    )
+
+    const profile = await fetchPlayerProfile('testuser')
+    expect(profile).toEqual({ username: 'testuser', location: 'New York, USA' })
+  })
+
+  it('returns a null location when the profile has none set', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ username: 'testuser' }), { status: 200 }))
+    )
+
+    const profile = await fetchPlayerProfile('testuser')
+    expect(profile.location).toBeNull()
+  })
+
+  it('throws ChessComFetchError when the user does not exist', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
+
+    await expect(fetchPlayerProfile('nobody')).rejects.toThrow(ChessComFetchError)
+  })
+
+  it('throws ChessComFetchError for an empty username', async () => {
+    await expect(fetchPlayerProfile('   ')).rejects.toThrow(ChessComFetchError)
   })
 })

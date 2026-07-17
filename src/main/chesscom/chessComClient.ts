@@ -97,3 +97,21 @@ export async function fetchRecentGames(
 
   return games
 }
+
+export interface ChessComPlayerProfile {
+  username: string
+  location: string | null
+}
+
+export async function fetchPlayerProfile(username: string): Promise<ChessComPlayerProfile> {
+  const trimmedUsername = username.trim().toLowerCase()
+  if (trimmedUsername.length === 0) {
+    throw new ChessComFetchError('Enter a chess.com username')
+  }
+
+  const profile = await fetchJson<{ username: string; location?: string }>(
+    `https://api.chess.com/pub/player/${trimmedUsername}`
+  )
+
+  return { username: profile.username, location: profile.location ?? null }
+}
