@@ -14,6 +14,10 @@ const chessAPI: ChessAPI = {
   openPgnFile: () => ipcRenderer.invoke(IPC_CHANNELS.openPgnFile),
   fetchChessComGames: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComGames, username),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getSettings),
+  startAccountLink: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.startAccountLink, username),
+  verifyAccountLink: () => ipcRenderer.invoke(IPC_CHANNELS.verifyAccountLink),
+  disconnectAccount: () => ipcRenderer.invoke(IPC_CHANNELS.disconnectAccount),
+  openChessComProfileSettings: () => ipcRenderer.invoke(IPC_CHANNELS.openChessComProfileSettings),
   scanChessComGames: () => ipcRenderer.invoke(IPC_CHANNELS.scanChessComGames),
   onScanProgress: (callback: (progress: ScanProgress) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgress): void => callback(progress)

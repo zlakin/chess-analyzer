@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, shell } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../../shared/ipc'
@@ -8,6 +8,7 @@ import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, ChessComFetchError } from '../chesscom/chessComClient'
 import { loadSettings } from '../settings/settingsStore'
+import { startLink, verifyLink, disconnectAccount } from '../chesscom/accountLink'
 import { AnalysisRunTracker } from './analysisRunTracker'
 import { runScan } from '../insights/scanRunner'
 import { loadAllGameRecords, loadScanMeta } from '../insights/insightsStore'
@@ -95,6 +96,22 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC_CHANNELS.getSettings, async () => {
     return loadSettings()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.startAccountLink, async (_event, username: string) => {
+    return startLink(username)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.verifyAccountLink, async () => {
+    return verifyLink()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.disconnectAccount, async () => {
+    disconnectAccount()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.openChessComProfileSettings, async () => {
+    await shell.openExternal('https://www.chess.com/settings/profile')
   })
 
   ipcMain.handle(IPC_CHANNELS.scanChessComGames, async () => {

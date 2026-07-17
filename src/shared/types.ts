@@ -85,6 +85,12 @@ export interface ChessAPI {
   openPgnFile(): Promise<{ pgn: string } | { cancelled: true } | { error: string }>
   fetchChessComGames(username: string): Promise<ChessComGameSummary[] | { error: string }>
   getSettings(): Promise<AppSettings>
+  startAccountLink(username: string): Promise<{ code: string } | { error: string }>
+  verifyAccountLink(): Promise<
+    { verified: true; username: string; verifiedAt: number } | { error: string }
+  >
+  disconnectAccount(): Promise<void>
+  openChessComProfileSettings(): Promise<void>
   scanChessComGames(): Promise<ScanOutcome>
   onScanProgress(callback: (progress: ScanProgress) => void): () => void
   cancelScan(): void
