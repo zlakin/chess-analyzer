@@ -1,5 +1,10 @@
+export interface LinkedAccount {
+  username: string
+  verifiedAt: number | null
+}
+
 export interface AppSettings {
-  chessComUsername: string | null
+  linkedAccount: LinkedAccount | null
 }
 
 export interface AnalyzedPosition {
@@ -80,7 +85,6 @@ export interface ChessAPI {
   openPgnFile(): Promise<{ pgn: string } | { cancelled: true } | { error: string }>
   fetchChessComGames(username: string): Promise<ChessComGameSummary[] | { error: string }>
   getSettings(): Promise<AppSettings>
-  setChessComUsername(username: string): Promise<AppSettings>
   scanChessComGames(): Promise<ScanOutcome>
   onScanProgress(callback: (progress: ScanProgress) => void): () => void
   cancelScan(): void

@@ -5,7 +5,6 @@ export const IPC_CHANNELS = {
   openPgnFile: 'chess:open-pgn-file',
   fetchChessComGames: 'chess:fetch-chesscom-games',
   getSettings: 'settings:get',
-  setChessComUsername: 'settings:set-chesscom-username',
   scanChessComGames: 'insights:scan',
   scanProgress: 'insights:scan-progress',
   cancelScan: 'insights:cancel-scan',

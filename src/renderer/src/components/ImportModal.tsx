@@ -18,7 +18,9 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
 
   useEffect(() => {
     window.chessAPI.getSettings().then((settings) => {
-      setUsername((current) => resolvePrefillUsername(current, settings.chessComUsername))
+      setUsername((current) =>
+        resolvePrefillUsername(current, settings.linkedAccount?.username ?? null)
+      )
     })
   }, [])
 
@@ -56,7 +58,6 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
       setError(result.error)
     } else {
       setChessComGames(result)
-      void window.chessAPI.setChessComUsername(trimmedUsername)
     }
   }
 

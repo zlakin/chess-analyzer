@@ -7,7 +7,7 @@ import { StockfishManager } from '../engine/stockfishManager'
 import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, ChessComFetchError } from '../chesscom/chessComClient'
-import { loadSettings, saveSettings } from '../settings/settingsStore'
+import { loadSettings } from '../settings/settingsStore'
 import { AnalysisRunTracker } from './analysisRunTracker'
 import { runScan } from '../insights/scanRunner'
 import { loadAllGameRecords, loadScanMeta } from '../insights/insightsStore'
@@ -97,19 +97,16 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return loadSettings()
   })
 
-  ipcMain.handle(IPC_CHANNELS.setChessComUsername, async (_event, username: string) => {
-    return saveSettings({ chessComUsername: username })
-  })
-
   ipcMain.handle(IPC_CHANNELS.scanChessComGames, async () => {
     const settings = loadSettings()
-    if (!settings.chessComUsername) {
-      return { error: 'Set a chess.com username first by searching for your games in the Analyze tab.' }
+    const username = settings.linkedAccount?.username
+    if (!username) {
+      return { error: 'Connect your chess.com account first.' }
     }
 
     const runId = scanRuns.start()
     try {
-      return await runScan(settings.chessComUsername, {
+      return await runScan(username, {
         isCancelled: () => scanRuns.isCancelled(runId),
         createEngine: () => new StockfishManager(getStockfishBinaryPath()),
         onProgress: (progress) => {
