@@ -455,3 +455,46 @@ textarea {
   padding: 0.3rem 0.4rem;
   text-align: left;
 }
+
+.account-chip {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.connect-account-modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.verification-code {
+  display: block;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 0.5);
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  text-align: center;
+}

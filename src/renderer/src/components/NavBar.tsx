@@ -1,3 +1,5 @@
+import type { LinkedAccount } from '../../../shared/types'
+
 export type AppTab = 'analyze' | 'insights'
 
 interface NavBarProps {
@@ -5,9 +7,24 @@ interface NavBarProps {
   onSelectTab: (tab: AppTab) => void
   isAnalyzing: boolean
   isScanning: boolean
+  linkedAccount: LinkedAccount | null
+  onOpenConnectModal: () => void
 }
 
-export function NavBar({ activeTab, onSelectTab, isAnalyzing, isScanning }: NavBarProps): JSX.Element {
+export function NavBar({
+  activeTab,
+  onSelectTab,
+  isAnalyzing,
+  isScanning,
+  linkedAccount,
+  onOpenConnectModal
+}: NavBarProps): JSX.Element {
+  const chipLabel = linkedAccount
+    ? linkedAccount.verifiedAt
+      ? `✓ ${linkedAccount.username}`
+      : `${linkedAccount.username} (unverified)`
+    : 'Connect chess.com account'
+
   return (
     <header className="nav-bar">
       <span className="nav-brand">Chess Analyzer</span>
@@ -25,6 +42,9 @@ export function NavBar({ activeTab, onSelectTab, isAnalyzing, isScanning }: NavB
           Insights{isScanning ? ' ⏳' : ''}
         </button>
       </nav>
+      <button className="account-chip" onClick={onOpenConnectModal}>
+        {chipLabel}
+      </button>
     </header>
   )
 }

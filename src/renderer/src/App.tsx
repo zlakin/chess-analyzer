@@ -8,6 +8,8 @@ import { EvalBar } from './components/EvalBar'
 import { MoveList } from './components/MoveList'
 import { EvalGraph } from './components/EvalGraph'
 import { GameSummary } from './components/GameSummary'
+import { ConnectAccountModal } from './components/ConnectAccountModal'
+import type { LinkedAccount } from '../../shared/types'
 import { useGameAnalysis } from './hooks/useGameAnalysis'
 import { useInsightsScan } from './hooks/useInsightsScan'
 import { parsePgn, PgnParseError } from '../../shared/pgn'
@@ -26,6 +28,12 @@ function App(): JSX.Element {
   const [pgnError, setPgnError] = useState<string | null>(null)
   const [players, setPlayers] = useState<Players>({ white: 'White', black: 'Black' })
   const [activeTab, setActiveTab] = useState<AppTab>('analyze')
+  const [linkedAccount, setLinkedAccount] = useState<LinkedAccount | null>(null)
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false)
+
+  useEffect(() => {
+    window.chessAPI.getSettings().then((settings) => setLinkedAccount(settings.linkedAccount))
+  }, [])
 
   const handleGameLoaded = (pgn: string): void => {
     setPgnError(null)
@@ -73,7 +81,23 @@ function App(): JSX.Element {
         onSelectTab={setActiveTab}
         isAnalyzing={state.status === 'analyzing'}
         isScanning={insightsScan.state.status === 'scanning'}
+        linkedAccount={linkedAccount}
+        onOpenConnectModal={() => setIsConnectModalOpen(true)}
       />
+      {isConnectModalOpen && (
+        <ConnectAccountModal
+          linkedAccount={linkedAccount}
+          onClose={() => setIsConnectModalOpen(false)}
+          onLinked={(account) => {
+            setLinkedAccount(account)
+            setIsConnectModalOpen(false)
+          }}
+          onDisconnected={() => {
+            setLinkedAccount(null)
+            setIsConnectModalOpen(false)
+          }}
+        />
+      )}
       <main className="app-content">
         {activeTab === 'analyze' && (
           <>
