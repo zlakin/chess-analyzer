@@ -13,8 +13,9 @@ import type { LinkedAccount } from '../../shared/types'
 import { useGameAnalysis } from './hooks/useGameAnalysis'
 import { useInsightsScan } from './hooks/useInsightsScan'
 import { parsePgn, PgnParseError } from '../../shared/pgn'
-import { getPositionAtPly } from './lib/gameNavigation'
+import { getPositionAtPly, getMoveAtPly } from './lib/gameNavigation'
 import { formatScore, whiteWinPercent } from './lib/displayEval'
+import { MoveDetail } from './components/MoveDetail'
 
 interface Players {
   white: string
@@ -51,6 +52,7 @@ function App(): JSX.Element {
   }
 
   const position = useMemo(() => getPositionAtPly(state.moves, currentPly), [state.moves, currentPly])
+  const currentMove = useMemo(() => getMoveAtPly(state.moves, currentPly), [state.moves, currentPly])
 
   const handleNewGame = (): void => {
     reset()
@@ -161,6 +163,7 @@ function App(): JSX.Element {
                       ⏭
                     </button>
                   </div>
+                  <MoveDetail move={currentMove} />
                 </div>
                 <div className="side-panel">
                   <MoveList moves={state.moves} currentPly={currentPly} onSelectPly={setCurrentPly} />

@@ -28,3 +28,8 @@ export function getPositionAtPly(moves: AnalyzedMove[], ply: number): PositionAt
     bestMoveUci: move.evalAfter.lines[0]?.moveUci ?? null
   }
 }
+
+export function getMoveAtPly(moves: AnalyzedMove[], ply: number): AnalyzedMove | null {
+  if (ply <= 0 || moves.length === 0) return null
+  return moves[Math.min(ply, moves.length) - 1]
+}
