@@ -21,6 +21,18 @@ const CLASSIFICATIONS_TO_SHOW: MoveClassification[] = [
   'blunder'
 ]
 
+const ALL_CLASSIFICATIONS_FOR_LEGEND: MoveClassification[] = [
+  'book',
+  'brilliant',
+  'great',
+  'best',
+  'excellent',
+  'good',
+  'inaccuracy',
+  'mistake',
+  'blunder'
+]
+
 function countByClassification(
   moves: AnalyzedMove[],
   color: 'w' | 'b'
@@ -83,7 +95,7 @@ export function GameSummary({
       </ResponsiveContainer>
 
       <ul className="classification-legend">
-        {CLASSIFICATIONS_TO_SHOW.map((classification) => {
+        {ALL_CLASSIFICATIONS_FOR_LEGEND.map((classification) => {
           const style = MOVE_CLASSIFICATION_STYLE[classification]
           const Icon = style.icon
           return (

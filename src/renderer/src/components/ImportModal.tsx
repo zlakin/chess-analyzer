@@ -95,13 +95,17 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
             placeholder="Paste PGN text here"
             rows={10}
           />
-          <button onClick={handlePasteSubmit}>Load Game</button>
+          <button className="button-primary" onClick={handlePasteSubmit}>
+            Load Game
+          </button>
         </div>
       )}
 
       {tab === 'upload' && (
         <div className="import-panel">
-          <button onClick={handleUpload}>Choose .pgn File...</button>
+          <button className="button-primary" onClick={handleUpload}>
+            Choose .pgn File...
+          </button>
         </div>
       )}
 
@@ -114,7 +118,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
               placeholder="chess.com username"
               onKeyDown={(e) => e.key === 'Enter' && handleFindGames()}
             />
-            <button onClick={handleFindGames} disabled={isFetching}>
+            <button className="button-primary" onClick={handleFindGames} disabled={isFetching}>
               {isFetching ? 'Searching...' : 'Find Games'}
             </button>
           </div>
