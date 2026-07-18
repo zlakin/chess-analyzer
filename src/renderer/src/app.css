@@ -1,14 +1,34 @@
 :root {
   color-scheme: dark;
-  --bg: #17181a;
-  --panel: #202226;
-  --panel-elevated: #262932;
-  --border: #34373f;
-  --text: #ececec;
-  --text-muted: #9a9ea8;
-  --accent: #7fa650;
-  --radius: 12px;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --bg: #191512;
+  --panel: #221d18;
+  --panel-elevated: #2b241d;
+  --border: #3a312a;
+  --border-strong: #4a3f35;
+  --text: #f1e9dd;
+  --text-muted: #a69a88;
+  --text-faint: #7a6f60;
+  --accent: #c98a3e;
+  --accent-hover: #dda255;
+  --accent-contrast: #1a1410;
+  --radius-panel: 10px;
+  --radius-control: 7px;
+  --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --eval-black: #15110d;
+
+  --mq-brilliant: #22d3ee;
+  --mq-great: #2dd4bf;
+  --mq-best: #4ade80;
+  --mq-excellent: #86d99a;
+  --mq-good: #9fb08c;
+  --mq-book: #a8a29e;
+  --mq-inaccuracy: #fbbf24;
+  --mq-mistake: #fb923c;
+  --mq-blunder: #f0554a;
+
+  --font-ui: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
 }
 
 * {
@@ -19,7 +39,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-ui);
 }
 
 button {
@@ -28,10 +48,10 @@ button {
   color: var(--text);
   background: var(--panel-elevated);
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 0.6);
+  border-radius: var(--radius-control);
   padding: 0.45rem 0.9rem;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 button:hover:not(:disabled) {
@@ -43,14 +63,36 @@ button:disabled {
   cursor: default;
 }
 
+.button-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.button-secondary {
+  background: transparent;
+}
+
 input,
 textarea {
   font-family: inherit;
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 0.5);
+  border-radius: var(--radius-control);
   padding: 0.45rem 0.6rem;
+}
+
+input:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .app {
@@ -66,7 +108,7 @@ textarea {
   padding: 0.85rem 1.5rem;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-modal);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -91,7 +133,7 @@ textarea {
 .nav-tab.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #10130b;
+  color: var(--accent-contrast);
   font-weight: 600;
 }
 
@@ -114,8 +156,7 @@ textarea {
 .import-modal {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-panel);
   padding: 1.25rem;
 }
 
@@ -128,14 +169,14 @@ textarea {
 .import-tabs button.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #10130b;
+  color: var(--accent-contrast);
   font-weight: 600;
 }
 
 .import-error {
-  background: #3a1c1c;
-  border: 1px solid #a33;
-  border-radius: calc(var(--radius) * 0.6);
+  background: color-mix(in srgb, var(--mq-blunder) 18%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--mq-blunder) 55%, var(--border));
+  border-radius: var(--radius-control);
   padding: 0.6rem 0.85rem;
   margin-bottom: 0.5rem;
 }
@@ -186,19 +227,18 @@ textarea {
   width: 100%;
   height: 480px;
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 0.4);
+  border-radius: var(--radius-control);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow);
 }
 
 .eval-bar-black {
-  background: #121316;
+  background: var(--eval-black);
 }
 
 .eval-bar-white {
-  background: #ececec;
+  background: var(--text);
 }
 
 .eval-bar-score {
@@ -250,8 +290,7 @@ textarea {
 .insights-tab {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-panel);
 }
 
 .move-list {
@@ -295,32 +334,40 @@ textarea {
   border: none;
   color: var(--text);
   padding: 0.15rem 0.4rem;
-  border-radius: calc(var(--radius) * 0.4);
+  border-radius: var(--radius-control);
   cursor: pointer;
 }
 
 .move.selected {
-  outline: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
-.move.brilliant,
-.move.great {
-  color: #17a2b8;
+.move.brilliant {
+  color: var(--mq-brilliant);
 }
-.move.best,
-.move.excellent,
-.move.good,
+.move.great {
+  color: var(--mq-great);
+}
+.move.best {
+  color: var(--mq-best);
+}
+.move.excellent {
+  color: var(--mq-excellent);
+}
+.move.good {
+  color: var(--mq-good);
+}
 .move.book {
-  color: #8fce6a;
+  color: var(--mq-book);
 }
 .move.inaccuracy {
-  color: #e6c229;
+  color: var(--mq-inaccuracy);
 }
 .move.mistake {
-  color: #e08a2c;
+  color: var(--mq-mistake);
 }
 .move.blunder {
-  color: #e14c4c;
+  color: var(--mq-blunder);
 }
 
 .move.brilliant::after {
@@ -428,7 +475,7 @@ textarea {
 .time-control-section {
   background: var(--panel-elevated);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-panel);
   padding: 1rem;
 }
 
@@ -474,8 +521,8 @@ textarea {
 .connect-account-modal {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-modal);
   padding: 1.25rem;
   width: 100%;
   max-width: 420px;
@@ -491,7 +538,7 @@ textarea {
   display: block;
   background: var(--panel-elevated);
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 0.5);
+  border-radius: var(--radius-control);
   padding: 0.5rem 0.75rem;
   margin: 0.5rem 0;
   font-size: 1rem;
