@@ -397,12 +397,33 @@ textarea:focus {
 }
 
 .top-findings-list {
+  list-style: none;
   margin: 0;
-  padding-left: 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .top-findings-empty {
   color: var(--text-muted);
+}
+
+.top-finding-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.top-finding-icon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: var(--accent);
 }
 
 .insights-buckets {
@@ -416,6 +437,12 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   padding: 1rem;
+}
+
+.time-control-section h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0 0 0.25rem;
 }
 
 .bucket-summary {

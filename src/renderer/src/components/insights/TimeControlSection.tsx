@@ -39,10 +39,10 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
 
       <ResponsiveContainer width="100%" height={120}>
         <BarChart data={phaseData}>
-          <XAxis dataKey="phase" stroke="#9a9ea8" />
-          <YAxis allowDecimals={false} stroke="#9a9ea8" />
+          <XAxis dataKey="phase" stroke="var(--text-muted)" />
+          <YAxis allowDecimals={false} stroke="var(--text-muted)" />
           <Tooltip />
-          <Bar dataKey="count" fill="#7fa650" />
+          <Bar dataKey="count" fill="var(--accent)" />
         </BarChart>
       </ResponsiveContainer>
 
@@ -73,7 +73,13 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
             <XAxis dataKey="gameIndex" hide />
             <YAxis domain={[0, 100]} hide />
             <Tooltip formatter={(value) => (typeof value === 'number' ? `${value.toFixed(0)}%` : '')} />
-            <Area type="monotone" dataKey="rollingAccuracy" stroke="#7fa650" fill="#7fa650" fillOpacity={0.3} />
+            <Area
+              type="monotone"
+              dataKey="rollingAccuracy"
+              stroke="var(--accent)"
+              fill="var(--accent)"
+              fillOpacity={0.3}
+            />
           </AreaChart>
         </ResponsiveContainer>
       )}

@@ -26,10 +26,14 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
               Scanning... {state.progress?.scanned ?? 0} / {state.progress?.total ?? 0}
             </span>
             <progress value={state.progress?.scanned ?? 0} max={state.progress?.total || 1} />
-            <button onClick={cancelScan}>Cancel</button>
+            <button className="button-secondary" onClick={cancelScan}>
+              Cancel
+            </button>
           </div>
         ) : (
-          <button onClick={() => void startScan()}>{hasReport ? 'Rescan' : 'Scan my games'}</button>
+          <button className="button-primary" onClick={() => void startScan()}>
+            {hasReport ? 'Rescan' : 'Scan my games'}
+          </button>
         )}
       </div>
 

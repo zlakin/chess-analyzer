@@ -1,3 +1,4 @@
+import { Lightbulb } from 'lucide-react'
 import type { TopFinding } from '../../../../shared/types'
 
 interface TopFindingsListProps {
@@ -12,7 +13,10 @@ export function TopFindingsList({ findings }: TopFindingsListProps): JSX.Element
   return (
     <ul className="top-findings-list">
       {findings.slice(0, 8).map((finding, index) => (
-        <li key={`${index}-${finding.text}`}>{finding.text}</li>
+        <li key={`${index}-${finding.text}`} className="top-finding-card">
+          <Lightbulb size={15} className="top-finding-icon" />
+          <span>{finding.text}</span>
+        </li>
       ))}
     </ul>
   )
