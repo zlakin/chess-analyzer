@@ -480,6 +480,7 @@ textarea:focus {
   border-radius: var(--radius-control);
   padding: 0.5rem 0.75rem;
   margin: 0.5rem 0;
+  font-family: var(--font-mono);
   font-size: 1rem;
   letter-spacing: 0.03em;
   text-align: center;

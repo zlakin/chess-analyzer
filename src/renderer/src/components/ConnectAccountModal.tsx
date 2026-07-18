@@ -71,14 +71,14 @@ export function ConnectAccountModal({
             </p>
             <div className="modal-actions">
               {!linkedAccount.verifiedAt && (
-                <button onClick={() => void startLinkFor(linkedAccount.username)} disabled={isBusy}>
+                <button className="button-primary" onClick={() => void startLinkFor(linkedAccount.username)} disabled={isBusy}>
                   Verify it&apos;s you
                 </button>
               )}
-              <button onClick={() => void handleDisconnect()} disabled={isBusy}>
+              <button className="button-secondary" onClick={() => void handleDisconnect()} disabled={isBusy}>
                 Disconnect
               </button>
-              <button onClick={onClose}>Close</button>
+              <button className="button-secondary" onClick={onClose}>Close</button>
             </div>
           </>
         )}
@@ -93,12 +93,12 @@ export function ConnectAccountModal({
                 placeholder="chess.com username"
                 onKeyDown={(e) => e.key === 'Enter' && void startLinkFor(username)}
               />
-              <button onClick={() => void startLinkFor(username)} disabled={isBusy}>
+              <button className="button-primary" onClick={() => void startLinkFor(username)} disabled={isBusy}>
                 {isBusy ? 'Checking...' : 'Start'}
               </button>
             </div>
             <div className="modal-actions">
-              <button onClick={onClose}>Cancel</button>
+              <button className="button-secondary" onClick={onClose}>Cancel</button>
             </div>
           </>
         )}
@@ -111,13 +111,13 @@ export function ConnectAccountModal({
             </p>
             <code className="verification-code">{code}</code>
             <div className="modal-actions">
-              <button onClick={() => void window.chessAPI.openChessComProfileSettings()}>
+              <button className="button-secondary" onClick={() => void window.chessAPI.openChessComProfileSettings()}>
                 Open chess.com profile
               </button>
-              <button onClick={() => void handleVerify()} disabled={isBusy}>
+              <button className="button-primary" onClick={() => void handleVerify()} disabled={isBusy}>
                 {isBusy ? 'Checking...' : "I've pasted it — Verify"}
               </button>
-              <button onClick={onClose}>Close</button>
+              <button className="button-secondary" onClick={onClose}>Close</button>
             </div>
           </>
         )}
