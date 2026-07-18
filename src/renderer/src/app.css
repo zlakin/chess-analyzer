@@ -607,6 +607,12 @@ textarea:focus {
   }
 }
 
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .account-chip.verified {
   border-color: var(--mq-best);
   color: var(--mq-best);
