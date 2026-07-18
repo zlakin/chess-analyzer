@@ -136,7 +136,11 @@ function App(): JSX.Element {
                   }
                 />
                 <div className="board-column">
-                  <Board fen={position.fen} bestMoveUci={position.bestMoveUci} />
+                  <Board
+                    fen={position.fen}
+                    bestMoveUci={position.bestMoveUci}
+                    currentMove={currentMove}
+                  />
                   <div className="board-nav">
                     <button onClick={() => goToPly(0)} disabled={currentPly === 0} title="First move (Home)">
                       ⏮

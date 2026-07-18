@@ -541,3 +541,29 @@ textarea:focus {
 .move-detail::first-line {
   font-family: var(--font-mono);
 }
+
+.board-move-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: badge-pop 0.15s ease-out;
+}
+
+@keyframes badge-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
