@@ -22,7 +22,10 @@
   "build": {
     "appId": "com.chessanalyzer.app",
     "productName": "Chess Analyzer",
-    "files": ["out/**/*", "package.json"],
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
     "directories": {
       "output": "release"
     },
@@ -33,14 +36,20 @@
       }
     ],
     "linux": {
-      "target": ["pacman"],
+      "target": [
+        "pacman"
+      ],
       "icon": "build/icon.png",
       "category": "Game",
       "maintainer": "Zachary L <zacharylakin0@gmail.com>"
     }
   },
   "dependencies": {
+    "@fontsource/fraunces": "^5.2.9",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/manrope": "^5.2.8",
     "chess.js": "^1.4.0",
+    "lucide-react": "^1.25.0",
     "react": "^19.2.7",
     "react-chessboard": "^5.10.0",
     "react-dom": "^19.2.7",
