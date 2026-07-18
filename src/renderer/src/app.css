@@ -211,7 +211,7 @@ textarea:focus {
   width: 100%;
   height: 480px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-control);
+  border-radius: 999px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -227,15 +227,33 @@ textarea:focus {
 
 .eval-bar-score {
   position: absolute;
-  bottom: 4px;
+  bottom: 8px;
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   font-weight: 600;
   color: #000;
   mix-blend-mode: difference;
   filter: invert(1);
+}
+
+.eval-bar-black,
+.eval-bar-white {
+  position: relative;
+  transition: height 0.25s ease;
+}
+
+.eval-bar-white::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 16px;
+  background: linear-gradient(to bottom, transparent, var(--text));
+  pointer-events: none;
 }
 
 .board-container {
@@ -258,8 +276,9 @@ textarea:focus {
 .board-nav button {
   min-width: 2.75rem;
   padding: 0.35rem 0.6rem;
-  font-size: 1.1rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .side-panel {

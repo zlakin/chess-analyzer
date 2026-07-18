@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
 import { NavBar } from './components/NavBar'
 import type { AppTab } from './components/NavBar'
 import { InsightsTab } from './components/InsightsTab'
@@ -143,28 +144,28 @@ function App(): JSX.Element {
                   />
                   <div className="board-nav">
                     <button onClick={() => goToPly(0)} disabled={currentPly === 0} title="First move (Home)">
-                      ⏮
+                      <ChevronsLeft size={18} />
                     </button>
                     <button
                       onClick={() => goToPly(currentPly - 1)}
                       disabled={currentPly === 0}
                       title="Previous move (←)"
                     >
-                      ◀
+                      <ChevronLeft size={18} />
                     </button>
                     <button
                       onClick={() => goToPly(currentPly + 1)}
                       disabled={currentPly === state.moves.length}
                       title="Next move (→)"
                     >
-                      ▶
+                      <ChevronRight size={18} />
                     </button>
                     <button
                       onClick={() => goToPly(state.moves.length)}
                       disabled={currentPly === state.moves.length}
                       title="Last move (End)"
                     >
-                      ⏭
+                      <ChevronsRight size={18} />
                     </button>
                   </div>
                   <MoveDetail move={currentMove} />
