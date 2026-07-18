@@ -115,26 +115,10 @@ textarea:focus {
 }
 
 .nav-brand {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.nav-tabs {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.nav-tab {
-  background: transparent;
-  border: 1px solid transparent;
-}
-
-.nav-tab.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .app-content {
@@ -583,4 +567,51 @@ textarea:focus {
   gap: 0.3rem;
   font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+.segmented-control {
+  display: flex;
+  gap: 0.2rem;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 0.2rem;
+}
+
+.segmented-control-option {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-control) - 2px);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.segmented-control-option.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+.spin-icon {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.account-chip.verified {
+  border-color: var(--mq-best);
+  color: var(--mq-best);
+}
+
+.account-chip-icon {
+  flex-shrink: 0;
 }

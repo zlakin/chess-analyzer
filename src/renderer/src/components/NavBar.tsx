@@ -1,3 +1,4 @@
+import { Loader2, CircleCheck } from 'lucide-react'
 import type { LinkedAccount } from '../../../shared/types'
 
 export type AppTab = 'analyze' | 'insights'
@@ -21,28 +22,34 @@ export function NavBar({
 }: NavBarProps): JSX.Element {
   const chipLabel = linkedAccount
     ? linkedAccount.verifiedAt
-      ? `✓ ${linkedAccount.username}`
-      : `${linkedAccount.username} (unverified)`
+      ? linkedAccount.username
+      : `${linkedAccount.username} · Unverified`
     : 'Connect chess.com account'
 
   return (
     <header className="nav-bar">
       <span className="nav-brand">Chess Analyzer</span>
-      <nav className="nav-tabs">
+      <nav className="segmented-control">
         <button
-          className={`nav-tab ${activeTab === 'analyze' ? 'active' : ''}`}
+          className={`segmented-control-option${activeTab === 'analyze' ? ' active' : ''}`}
           onClick={() => onSelectTab('analyze')}
         >
-          Analyze{isAnalyzing ? ' ⏳' : ''}
+          Analyze
+          {isAnalyzing && <Loader2 size={14} className="spin-icon" />}
         </button>
         <button
-          className={`nav-tab ${activeTab === 'insights' ? 'active' : ''}`}
+          className={`segmented-control-option${activeTab === 'insights' ? ' active' : ''}`}
           onClick={() => onSelectTab('insights')}
         >
-          Insights{isScanning ? ' ⏳' : ''}
+          Insights
+          {isScanning && <Loader2 size={14} className="spin-icon" />}
         </button>
       </nav>
-      <button className="account-chip" onClick={onOpenConnectModal}>
+      <button
+        className={`account-chip${linkedAccount?.verifiedAt ? ' verified' : ''}`}
+        onClick={onOpenConnectModal}
+      >
+        {linkedAccount?.verifiedAt && <CircleCheck size={14} className="account-chip-icon" />}
         {chipLabel}
       </button>
     </header>
