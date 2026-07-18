@@ -330,44 +330,23 @@ textarea:focus {
 }
 
 .move {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   background: none;
   border: none;
   color: var(--text);
-  padding: 0.15rem 0.4rem;
+  padding: 0.15rem 0.45rem;
   border-radius: var(--radius-control);
   cursor: pointer;
 }
 
-.move.selected {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
+.move-icon {
+  flex-shrink: 0;
 }
 
-.move.brilliant {
-  color: var(--mq-brilliant);
-}
-.move.great {
-  color: var(--mq-great);
-}
-.move.best {
-  color: var(--mq-best);
-}
-.move.excellent {
-  color: var(--mq-excellent);
-}
-.move.good {
-  color: var(--mq-good);
-}
-.move.book {
-  color: var(--mq-book);
-}
-.move.inaccuracy {
-  color: var(--mq-inaccuracy);
-}
-.move.mistake {
-  color: var(--mq-mistake);
-}
-.move.blunder {
-  color: var(--mq-blunder);
+.move.selected {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .move.brilliant::after {

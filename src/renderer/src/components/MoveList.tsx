@@ -1,4 +1,5 @@
-import type { AnalyzedMove, MoveClassification } from '../../../shared/types'
+import type { AnalyzedMove } from '../../../shared/types'
+import { MOVE_CLASSIFICATION_STYLE } from '../lib/moveClassificationStyle'
 
 interface MoveListProps {
   moves: AnalyzedMove[]
@@ -12,16 +13,29 @@ interface MoveRow {
   black?: AnalyzedMove
 }
 
-const CLASSIFICATION_LABELS: Record<MoveClassification, string> = {
-  book: 'Book',
-  brilliant: 'Brilliant',
-  great: 'Great',
-  best: 'Best',
-  excellent: 'Excellent',
-  good: 'Good',
-  inaccuracy: 'Inaccuracy',
-  mistake: 'Mistake',
-  blunder: 'Blunder'
+function MoveButton({
+  move,
+  isSelected,
+  onSelect
+}: {
+  move: AnalyzedMove
+  isSelected: boolean
+  onSelect: () => void
+}): JSX.Element {
+  const style = MOVE_CLASSIFICATION_STYLE[move.classification]
+  const Icon = style.icon
+  return (
+    <button
+      className={`move ${move.classification}${isSelected ? ' selected' : ''}`}
+      onClick={onSelect}
+      title={style.label}
+    >
+      <Icon size={12} className="move-icon" style={{ color: style.color }} />
+      <span className="move-san" style={{ color: style.color }}>
+        {move.san}
+      </span>
+    </button>
+  )
 }
 
 export function MoveList({ moves, currentPly, onSelectPly }: MoveListProps): JSX.Element {
@@ -39,22 +53,18 @@ export function MoveList({ moves, currentPly, onSelectPly }: MoveListProps): JSX
         <li key={row.moveNumber} className="move-row">
           <span className="move-number">{row.moveNumber}.</span>
           {row.white && (
-            <button
-              className={`move ${row.white.classification} ${row.white.ply === currentPly ? 'selected' : ''}`}
-              onClick={() => onSelectPly(row.white!.ply)}
-              title={CLASSIFICATION_LABELS[row.white.classification]}
-            >
-              {row.white.san}
-            </button>
+            <MoveButton
+              move={row.white}
+              isSelected={row.white.ply === currentPly}
+              onSelect={() => onSelectPly(row.white!.ply)}
+            />
           )}
           {row.black && (
-            <button
-              className={`move ${row.black.classification} ${row.black.ply === currentPly ? 'selected' : ''}`}
-              onClick={() => onSelectPly(row.black!.ply)}
-              title={CLASSIFICATION_LABELS[row.black.classification]}
-            >
-              {row.black.san}
-            </button>
+            <MoveButton
+              move={row.black}
+              isSelected={row.black.ply === currentPly}
+              onSelect={() => onSelectPly(row.black!.ply)}
+            />
           )}
         </li>
       ))}
