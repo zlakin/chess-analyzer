@@ -1,4 +1,6 @@
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { AnalyzedMove, MoveClassification } from '../../../shared/types'
+import { MOVE_CLASSIFICATION_STYLE } from '../lib/moveClassificationStyle'
 
 interface GameSummaryProps {
   moves: AnalyzedMove[]
@@ -45,34 +47,53 @@ export function GameSummary({
   const whiteCounts = countByClassification(moves, 'w')
   const blackCounts = countByClassification(moves, 'b')
 
+  const barData = [
+    { player: whiteUsername, ...whiteCounts },
+    { player: blackUsername, ...blackCounts }
+  ]
+
   return (
     <div className="game-summary">
-      <div className="accuracy-row">
-        <span>
-          {whiteUsername}: {whiteAccuracy.toFixed(1)}% accuracy
-        </span>
-        <span>
-          {blackUsername}: {blackAccuracy.toFixed(1)}% accuracy
-        </span>
+      <div className="accuracy-scorecards">
+        <div className="accuracy-scorecard">
+          <span className="accuracy-scorecard-value">{whiteAccuracy.toFixed(1)}%</span>
+          <span className="accuracy-scorecard-label">{whiteUsername}</span>
+        </div>
+        <div className="accuracy-scorecard">
+          <span className="accuracy-scorecard-value">{blackAccuracy.toFixed(1)}%</span>
+          <span className="accuracy-scorecard-label">{blackUsername}</span>
+        </div>
       </div>
-      <table className="classification-table">
-        <thead>
-          <tr>
-            <th>Move Quality</th>
-            <th>{whiteUsername}</th>
-            <th>{blackUsername}</th>
-          </tr>
-        </thead>
-        <tbody>
+
+      <ResponsiveContainer width="100%" height={90}>
+        <BarChart data={barData} layout="vertical" margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+          <XAxis type="number" hide />
+          <YAxis type="category" dataKey="player" hide />
+          <Tooltip cursor={{ fill: 'transparent' }} />
           {CLASSIFICATIONS_TO_SHOW.map((classification) => (
-            <tr key={classification}>
-              <td>{classification}</td>
-              <td>{whiteCounts[classification]}</td>
-              <td>{blackCounts[classification]}</td>
-            </tr>
+            <Bar
+              key={classification}
+              dataKey={classification}
+              stackId="quality"
+              fill={MOVE_CLASSIFICATION_STYLE[classification].color}
+              name={MOVE_CLASSIFICATION_STYLE[classification].label}
+            />
           ))}
-        </tbody>
-      </table>
+        </BarChart>
+      </ResponsiveContainer>
+
+      <ul className="classification-legend">
+        {CLASSIFICATIONS_TO_SHOW.map((classification) => {
+          const style = MOVE_CLASSIFICATION_STYLE[classification]
+          const Icon = style.icon
+          return (
+            <li key={classification} className="classification-legend-item">
+              <Icon size={13} style={{ color: style.color }} />
+              <span>{style.label}</span>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }
