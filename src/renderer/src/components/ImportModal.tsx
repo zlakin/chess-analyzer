@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ChessComGameSummary } from '../../../shared/types'
 import { resolvePrefillUsername } from '../lib/resolvePrefillUsername'
+import { resultBadge } from '../lib/chessComResult'
 
 interface ImportModalProps {
   onGameLoaded: (pgn: string) => void
@@ -63,14 +64,23 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
 
   return (
     <div className="import-modal">
-      <div className="import-tabs">
-        <button className={tab === 'paste' ? 'active' : ''} onClick={() => setTab('paste')}>
+      <div className="import-tabs segmented-control">
+        <button
+          className={`segmented-control-option${tab === 'paste' ? ' active' : ''}`}
+          onClick={() => setTab('paste')}
+        >
           Paste PGN
         </button>
-        <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}>
+        <button
+          className={`segmented-control-option${tab === 'upload' ? ' active' : ''}`}
+          onClick={() => setTab('upload')}
+        >
           Upload File
         </button>
-        <button className={tab === 'chesscom' ? 'active' : ''} onClick={() => setTab('chesscom')}>
+        <button
+          className={`segmented-control-option${tab === 'chesscom' ? ' active' : ''}`}
+          onClick={() => setTab('chesscom')}
+        >
           Chess.com
         </button>
       </div>
@@ -109,14 +119,31 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
             </button>
           </div>
           <ul className="chesscom-game-list">
-            {chessComGames.map((game) => (
-              <li key={game.url}>
-                <button onClick={() => onGameLoaded(game.pgn)}>
-                  {game.white.username} ({game.white.rating}) vs {game.black.username} (
-                  {game.black.rating}) &mdash; {new Date(game.endTime * 1000).toLocaleDateString()}
-                </button>
-              </li>
-            ))}
+            {chessComGames.map((game) => {
+              const badge = resultBadge(game)
+              return (
+                <li key={game.url}>
+                  <button className="chesscom-game-card" onClick={() => onGameLoaded(game.pgn)}>
+                    <span className="chesscom-game-players">
+                      <span className="chesscom-game-player">
+                        {game.white.username}{' '}
+                        <span className="chesscom-game-rating">({game.white.rating})</span>
+                      </span>
+                      <span className={`chesscom-game-result ${badge.outcome}`}>
+                        {badge.text}
+                      </span>
+                      <span className="chesscom-game-player">
+                        {game.black.username}{' '}
+                        <span className="chesscom-game-rating">({game.black.rating})</span>
+                      </span>
+                    </span>
+                    <span className="chesscom-game-date">
+                      {new Date(game.endTime * 1000).toLocaleDateString()}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}

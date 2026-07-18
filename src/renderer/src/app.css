@@ -145,16 +145,7 @@ textarea:focus {
 }
 
 .import-tabs {
-  display: flex;
-  gap: 0.5rem;
   margin-bottom: 1rem;
-}
-
-.import-tabs button.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 600;
 }
 
 .import-error {
@@ -185,11 +176,6 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-}
-
-.chesscom-game-list button {
-  width: 100%;
-  text-align: left;
 }
 
 .analysis-progress {
@@ -639,4 +625,61 @@ textarea:focus {
 
 .account-chip-icon {
   flex-shrink: 0;
+}
+
+.chesscom-game-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--panel-elevated);
+  text-align: left;
+}
+
+.chesscom-game-card:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel-elevated));
+}
+
+.chesscom-game-players {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chesscom-game-rating {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.chesscom-game-result {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-control);
+  white-space: nowrap;
+}
+
+.chesscom-game-result.white {
+  background: color-mix(in srgb, var(--mq-best) 20%, transparent);
+  color: var(--mq-best);
+}
+
+.chesscom-game-result.black {
+  background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+  color: var(--text);
+}
+
+.chesscom-game-result.draw {
+  background: color-mix(in srgb, var(--text-faint) 20%, transparent);
+  color: var(--text-muted);
+}
+
+.chesscom-game-date {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
