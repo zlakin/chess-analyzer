@@ -727,7 +727,7 @@ textarea:focus {
 }
 
 .account-chip.verified .account-chip-rating {
-  border-left-color: color-mix(in srgb, var(--mq-best) 40%, var(--border));
+  border-left-color: color-mix(in srgb, var(--accent) 40%, var(--border));
 }
 
 .chesscom-game-card {
