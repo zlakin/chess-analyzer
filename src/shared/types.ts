@@ -109,6 +109,17 @@ export type TimeControlCategory = 'bullet' | 'blitz' | 'rapid' | 'daily'
 
 export type GamePhase = 'opening' | 'middlegame' | 'endgame'
 
+export type TacticType = 'fork' | 'pin' | 'skewer' | 'discovered_attack' | 'back_rank_mate' | 'hung_piece'
+
+export const TACTIC_TYPES: TacticType[] = [
+  'fork',
+  'pin',
+  'skewer',
+  'discovered_attack',
+  'back_rank_mate',
+  'hung_piece'
+]
+
 export interface GameInsightMistake {
   ply: number
   classification: 'mistake' | 'blunder'

@@ -3,7 +3,7 @@ import type { AnalyzedPosition } from './types'
 
 export class PgnParseError extends Error {}
 
-const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
+export const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
 
 export function parsePgn(pgn: string): AnalyzedPosition[] {
   const chess = new Chess()
