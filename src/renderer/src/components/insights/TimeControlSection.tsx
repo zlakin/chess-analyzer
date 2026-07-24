@@ -1,5 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
-import type { InsightsBucket } from '../../../../shared/types'
+import type { InsightsBucket, TacticType } from '../../../../shared/types'
+import { TACTIC_LABELS } from '../../lib/tacticLabels'
+import { RecentMistakesList } from './RecentMistakesList'
 
 interface TimeControlSectionProps {
   bucket: InsightsBucket
@@ -29,14 +31,27 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
     { phase: 'Endgame', count: bucket.phaseBreakdown.endgame }
   ]
 
+  const tacticEntries = (Object.entries(bucket.tacticBreakdown) as Array<[TacticType, number]>)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+
   return (
     <div className="time-control-section">
       <h3>{BUCKET_LABELS[bucket.key]}</h3>
       <p className="bucket-summary">
         {bucket.gamesCount} games &middot; {bucket.totalMistakes} mistakes/blunders &middot;{' '}
-        {bucket.tacticBreakdown.hung_piece} hung a piece &middot; {bucket.timePressureCount} under time
-        pressure
+        {bucket.timePressureCount} under time pressure
       </p>
+
+      {tacticEntries.length > 0 && (
+        <div className="tactic-chip-row">
+          {tacticEntries.map(([tag, count]) => (
+            <span key={tag} className="tactic-chip">
+              {TACTIC_LABELS[tag]} &times;{count}
+            </span>
+          ))}
+        </div>
+      )}
 
       <ResponsiveContainer width="100%" height={120}>
         <BarChart data={phaseData}>
@@ -84,6 +99,8 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
           </AreaChart>
         </ResponsiveContainer>
       )}
+
+      <RecentMistakesList mistakes={bucket.recentMistakes} />
     </div>
   )
 }
