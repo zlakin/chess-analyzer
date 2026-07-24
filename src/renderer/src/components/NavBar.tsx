@@ -1,4 +1,4 @@
-import { Loader2, CircleCheck } from 'lucide-react'
+import { Loader2, BadgeCheck } from 'lucide-react'
 import type { ChessComPlayerStats, LinkedAccount } from '../../../shared/types'
 import { primaryRating } from '../lib/chessComRatingLabels'
 
@@ -53,7 +53,7 @@ export function NavBar({
         className={`account-chip${linkedAccount?.verifiedAt ? ' verified' : ''}`}
         onClick={onOpenConnectModal}
       >
-        {linkedAccount?.verifiedAt && <CircleCheck size={14} className="account-chip-icon" />}
+        {linkedAccount?.verifiedAt && <BadgeCheck size={14} className="account-chip-icon" />}
         {chipLabel}
         {headlineRating != null && <span className="account-chip-rating">{headlineRating}</span>}
       </button>

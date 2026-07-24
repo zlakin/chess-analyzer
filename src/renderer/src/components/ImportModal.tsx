@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CircleCheck } from 'lucide-react'
+import { BadgeCheck } from 'lucide-react'
 import { useChessComProfile } from '../hooks/useChessComProfile'
 import { resultBadge } from '../lib/chessComResult'
 import { RATING_LABELS } from '../lib/chessComRatingLabels'
@@ -89,7 +89,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
           {chessCom.state.linkedAccount?.verifiedAt && !chessCom.state.isManualSearch ? (
             <div className="chesscom-profile">
               <div className="chesscom-profile-identity">
-                <CircleCheck size={16} className="chesscom-verified-icon" />
+                <BadgeCheck size={16} className="chesscom-verified-icon" />
                 <span className="chesscom-profile-username">
                   {chessCom.state.linkedAccount.username}
                 </span>

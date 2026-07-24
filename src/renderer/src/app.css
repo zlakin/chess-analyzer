@@ -194,7 +194,7 @@ textarea:focus {
 }
 
 .chesscom-verified-icon {
-  color: var(--mq-best);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
@@ -710,8 +710,8 @@ textarea:focus {
 }
 
 .account-chip.verified {
-  border-color: var(--mq-best);
-  color: var(--mq-best);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .account-chip-icon {
