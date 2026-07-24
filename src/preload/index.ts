@@ -13,6 +13,7 @@ const chessAPI: ChessAPI = {
   cancelAnalysis: () => ipcRenderer.send(IPC_CHANNELS.cancelAnalysis),
   openPgnFile: () => ipcRenderer.invoke(IPC_CHANNELS.openPgnFile),
   fetchChessComGames: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComGames, username),
+  fetchChessComStats: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComStats, username),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getSettings),
   startAccountLink: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.startAccountLink, username),
   verifyAccountLink: () => ipcRenderer.invoke(IPC_CHANNELS.verifyAccountLink),

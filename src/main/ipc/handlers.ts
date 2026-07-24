@@ -6,7 +6,7 @@ import type { AnalyzedPosition } from '../../shared/types'
 import { StockfishManager } from '../engine/stockfishManager'
 import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { analyzeGame } from '../analysis/gameAnalyzer'
-import { fetchRecentGames, ChessComFetchError } from '../chesscom/chessComClient'
+import { fetchRecentGames, fetchPlayerStats, ChessComFetchError } from '../chesscom/chessComClient'
 import { loadSettings } from '../settings/settingsStore'
 import { startLink, verifyLink, disconnectAccount } from '../chesscom/accountLink'
 import { AnalysisRunTracker } from './analysisRunTracker'
@@ -88,6 +88,15 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IPC_CHANNELS.fetchChessComGames, async (_event, username: string) => {
     try {
       return await fetchRecentGames(username)
+    } catch (err) {
+      if (err instanceof ChessComFetchError) return { error: err.message }
+      return { error: `Unexpected error: ${(err as Error).message}` }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.fetchChessComStats, async (_event, username: string) => {
+    try {
+      return await fetchPlayerStats(username)
     } catch (err) {
       if (err instanceof ChessComFetchError) return { error: err.message }
       return { error: `Unexpected error: ${(err as Error).message}` }

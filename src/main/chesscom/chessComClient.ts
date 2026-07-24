@@ -115,3 +115,35 @@ export async function fetchPlayerProfile(username: string): Promise<ChessComPlay
 
   return { username: profile.username, location: profile.location ?? null }
 }
+
+export interface ChessComPlayerStats {
+  bullet: number | null
+  blitz: number | null
+  rapid: number | null
+  daily: number | null
+}
+
+interface ChessComStatsResponse {
+  chess_bullet?: { last?: { rating?: number } }
+  chess_blitz?: { last?: { rating?: number } }
+  chess_rapid?: { last?: { rating?: number } }
+  chess_daily?: { last?: { rating?: number } }
+}
+
+export async function fetchPlayerStats(username: string): Promise<ChessComPlayerStats> {
+  const trimmedUsername = username.trim().toLowerCase()
+  if (trimmedUsername.length === 0) {
+    throw new ChessComFetchError('Enter a chess.com username')
+  }
+
+  const stats = await fetchJson<ChessComStatsResponse>(
+    `https://api.chess.com/pub/player/${trimmedUsername}/stats`
+  )
+
+  return {
+    bullet: stats.chess_bullet?.last?.rating ?? null,
+    blitz: stats.chess_blitz?.last?.rating ?? null,
+    rapid: stats.chess_rapid?.last?.rating ?? null,
+    daily: stats.chess_daily?.last?.rating ?? null
+  }
+}

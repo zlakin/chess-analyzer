@@ -1,5 +1,6 @@
 import { Loader2, CircleCheck } from 'lucide-react'
-import type { LinkedAccount } from '../../../shared/types'
+import type { ChessComPlayerStats, LinkedAccount } from '../../../shared/types'
+import { primaryRating } from '../lib/chessComRatingLabels'
 
 export type AppTab = 'analyze' | 'insights'
 
@@ -9,6 +10,7 @@ interface NavBarProps {
   isAnalyzing: boolean
   isScanning: boolean
   linkedAccount: LinkedAccount | null
+  rating: ChessComPlayerStats | null
   onOpenConnectModal: () => void
 }
 
@@ -18,6 +20,7 @@ export function NavBar({
   isAnalyzing,
   isScanning,
   linkedAccount,
+  rating,
   onOpenConnectModal
 }: NavBarProps): JSX.Element {
   const chipLabel = linkedAccount
@@ -25,6 +28,7 @@ export function NavBar({
       ? linkedAccount.username
       : `${linkedAccount.username} · Unverified`
     : 'Connect chess.com account'
+  const headlineRating = linkedAccount?.verifiedAt ? primaryRating(rating) : null
 
   return (
     <header className="nav-bar">
@@ -51,6 +55,7 @@ export function NavBar({
       >
         {linkedAccount?.verifiedAt && <CircleCheck size={14} className="account-chip-icon" />}
         {chipLabel}
+        {headlineRating != null && <span className="account-chip-rating">{headlineRating}</span>}
       </button>
     </header>
   )

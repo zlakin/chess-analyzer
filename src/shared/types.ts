@@ -60,6 +60,13 @@ export interface ChessComPlayerResult {
   result: string
 }
 
+export interface ChessComPlayerStats {
+  bullet: number | null
+  blitz: number | null
+  rapid: number | null
+  daily: number | null
+}
+
 export interface ChessComGameSummary {
   url: string
   pgn: string
@@ -84,6 +91,7 @@ export interface ChessAPI {
   cancelAnalysis(): void
   openPgnFile(): Promise<{ pgn: string } | { cancelled: true } | { error: string }>
   fetchChessComGames(username: string): Promise<ChessComGameSummary[] | { error: string }>
+  fetchChessComStats(username: string): Promise<ChessComPlayerStats | { error: string }>
   getSettings(): Promise<AppSettings>
   startAccountLink(username: string): Promise<{ code: string } | { error: string }>
   verifyAccountLink(): Promise<

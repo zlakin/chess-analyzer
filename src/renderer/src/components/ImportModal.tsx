@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import type { ChessComGameSummary } from '../../../shared/types'
-import { resolvePrefillUsername } from '../lib/resolvePrefillUsername'
+import { useState } from 'react'
+import { CircleCheck } from 'lucide-react'
+import { useChessComProfile } from '../hooks/useChessComProfile'
 import { resultBadge } from '../lib/chessComResult'
+import { RATING_LABELS } from '../lib/chessComRatingLabels'
 
 interface ImportModalProps {
   onGameLoaded: (pgn: string) => void
@@ -13,17 +14,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
   const [tab, setTab] = useState<ImportTab>('paste')
   const [pasteText, setPasteText] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [username, setUsername] = useState('')
-  const [chessComGames, setChessComGames] = useState<ChessComGameSummary[]>([])
-  const [isFetching, setIsFetching] = useState(false)
-
-  useEffect(() => {
-    window.chessAPI.getSettings().then((settings) => {
-      setUsername((current) =>
-        resolvePrefillUsername(current, settings.linkedAccount?.username ?? null)
-      )
-    })
-  }, [])
+  const chessCom = useChessComProfile()
 
   const handlePasteSubmit = (): void => {
     if (pasteText.trim().length === 0) {
@@ -44,23 +35,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
     }
   }
 
-  const handleFindGames = async (): Promise<void> => {
-    const trimmedUsername = username.trim()
-    if (trimmedUsername.length === 0) {
-      setError('Enter a chess.com username')
-      return
-    }
-    setError(null)
-    setIsFetching(true)
-    setChessComGames([])
-    const result = await window.chessAPI.fetchChessComGames(trimmedUsername)
-    setIsFetching(false)
-    if ('error' in result) {
-      setError(result.error)
-    } else {
-      setChessComGames(result)
-    }
-  }
+  const activeError = tab === 'chesscom' ? chessCom.state.error : error
 
   return (
     <div className="import-modal">
@@ -85,7 +60,7 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
         </button>
       </div>
 
-      {error && <div className="import-error">{error}</div>}
+      {activeError && <div className="import-error">{activeError}</div>}
 
       {tab === 'paste' && (
         <div className="import-panel">
@@ -111,19 +86,56 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
 
       {tab === 'chesscom' && (
         <div className="import-panel">
-          <div className="chesscom-search">
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="chess.com username"
-              onKeyDown={(e) => e.key === 'Enter' && handleFindGames()}
-            />
-            <button className="button-primary" onClick={handleFindGames} disabled={isFetching}>
-              {isFetching ? 'Searching...' : 'Find Games'}
-            </button>
-          </div>
+          {chessCom.state.linkedAccount?.verifiedAt && !chessCom.state.isManualSearch ? (
+            <div className="chesscom-profile">
+              <div className="chesscom-profile-identity">
+                <CircleCheck size={16} className="chesscom-verified-icon" />
+                <span className="chesscom-profile-username">
+                  {chessCom.state.linkedAccount.username}
+                </span>
+                {chessCom.state.stats && (
+                  <span className="chesscom-profile-ratings">
+                    {RATING_LABELS.filter(({ key }) => chessCom.state.stats?.[key] != null).map(
+                      ({ key, label }) => (
+                        <span key={key} className="chesscom-rating-badge">
+                          {label} <strong>{chessCom.state.stats?.[key]}</strong>
+                        </span>
+                      )
+                    )}
+                  </span>
+                )}
+              </div>
+              <button className="button-secondary" onClick={chessCom.openManualSearch}>
+                Search another player
+              </button>
+            </div>
+          ) : (
+            <div className="chesscom-search">
+              <input
+                value={chessCom.state.username}
+                onChange={(e) => chessCom.setUsername(e.target.value)}
+                placeholder="chess.com username"
+                onKeyDown={(e) => e.key === 'Enter' && chessCom.findGames()}
+              />
+              <button
+                className="button-primary"
+                onClick={chessCom.findGames}
+                disabled={chessCom.state.isFetching}
+              >
+                {chessCom.state.isFetching ? 'Searching...' : 'Find Games'}
+              </button>
+              {chessCom.state.linkedAccount?.verifiedAt && (
+                <button className="button-secondary" onClick={chessCom.showMyProfile}>
+                  Back to my profile
+                </button>
+              )}
+            </div>
+          )}
+          {chessCom.state.isFetching && chessCom.state.games.length === 0 && (
+            <p className="chesscom-loading">Loading games...</p>
+          )}
           <ul className="chesscom-game-list">
-            {chessComGames.map((game) => {
+            {chessCom.state.games.map((game) => {
               const badge = resultBadge(game)
               return (
                 <li key={game.url}>

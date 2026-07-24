@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchRecentGames, fetchPlayerProfile, ChessComFetchError } from './chessComClient'
+import { fetchRecentGames, fetchPlayerProfile, fetchPlayerStats, ChessComFetchError } from './chessComClient'
 
 describe('fetchRecentGames', () => {
   beforeEach(() => {
@@ -177,5 +177,46 @@ describe('fetchPlayerProfile', () => {
 
   it('throws ChessComFetchError for an empty username', async () => {
     await expect(fetchPlayerProfile('   ')).rejects.toThrow(ChessComFetchError)
+  })
+})
+
+describe('fetchPlayerStats', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('returns the last rating for each time class present', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            chess_rapid: { last: { rating: 1500 } },
+            chess_blitz: { last: { rating: 1400 } }
+          }),
+          { status: 200 }
+        )
+      )
+    )
+
+    const stats = await fetchPlayerStats('testuser')
+    expect(stats).toEqual({ bullet: null, blitz: 1400, rapid: 1500, daily: null })
+  })
+
+  it('returns nulls for a player with no rated games', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({}), { status: 200 })))
+
+    const stats = await fetchPlayerStats('testuser')
+    expect(stats).toEqual({ bullet: null, blitz: null, rapid: null, daily: null })
+  })
+
+  it('throws ChessComFetchError when the user does not exist', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
+
+    await expect(fetchPlayerStats('nobody')).rejects.toThrow(ChessComFetchError)
+  })
+
+  it('throws ChessComFetchError for an empty username', async () => {
+    await expect(fetchPlayerStats('   ')).rejects.toThrow(ChessComFetchError)
   })
 })

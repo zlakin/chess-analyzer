@@ -4,6 +4,7 @@ export const IPC_CHANNELS = {
   cancelAnalysis: 'chess:cancel-analysis',
   openPgnFile: 'chess:open-pgn-file',
   fetchChessComGames: 'chess:fetch-chesscom-games',
+  fetchChessComStats: 'chess:fetch-chesscom-stats',
   getSettings: 'settings:get',
   startAccountLink: 'account:start-link',
   verifyAccountLink: 'account:verify-link',
