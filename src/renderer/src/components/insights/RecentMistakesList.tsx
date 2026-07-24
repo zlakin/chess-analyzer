@@ -1,8 +1,18 @@
-import type { MistakeSummary } from '../../../../shared/types'
+import type { MistakeSummary, TacticType } from '../../../../shared/types'
 import { TACTIC_LABELS } from '../../lib/tacticLabels'
 
 interface RecentMistakesListProps {
   mistakes: MistakeSummary[]
+}
+
+const PHASE_LABELS = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' }
+
+// missedTactics and punishedByTactics can legitimately share a tag (e.g. the
+// player missed a fork earlier and was separately forked later in the same
+// move) -- dedupe for display, since two identical "Fork" chips read as a
+// rendering glitch rather than two distinct facts.
+function displayTags(mistake: MistakeSummary): TacticType[] {
+  return Array.from(new Set([...mistake.missedTactics, ...mistake.punishedByTactics]))
 }
 
 export function RecentMistakesList({ mistakes }: RecentMistakesListProps): JSX.Element | null {
@@ -11,18 +21,18 @@ export function RecentMistakesList({ mistakes }: RecentMistakesListProps): JSX.E
   return (
     <ul className="recent-mistakes-list">
       {mistakes.map((mistake) => {
-        const tags = [...mistake.missedTactics, ...mistake.punishedByTactics]
+        const tags = displayTags(mistake)
         return (
           <li key={`${mistake.gameUrl}-${mistake.ply}`} className="recent-mistake-row">
             <span className="recent-mistake-meta">
               {new Date(mistake.endTime * 1000).toLocaleDateString()} &middot; vs {mistake.opponentUsername}
-              &middot; move {Math.ceil(mistake.ply / 2)}
+              &middot; move {Math.ceil(mistake.ply / 2)} &middot; {PHASE_LABELS[mistake.phase]}
             </span>
             <span className="recent-mistake-tags">
               {tags.length === 0
                 ? 'Positional'
-                : tags.map((tag, i) => (
-                    <span key={`${tag}-${i}`} className="recent-mistake-tag">
+                : tags.map((tag) => (
+                    <span key={tag} className="recent-mistake-tag">
                       {TACTIC_LABELS[tag]}
                     </span>
                   ))}

@@ -96,10 +96,10 @@ function openingFindings(bucket: InsightsBucket): TopFinding[] {
 function trendFindings(bucket: InsightsBucket): TopFinding[] {
   return bucket.tacticTrends.map((trend) => {
     const direction = trend.newerShare > trend.olderShare ? 'more often' : 'less often'
-    const deltaPoints = Math.abs(trend.newerShare - trend.olderShare) * 100
+    const deltaShare = Math.abs(trend.newerShare - trend.olderShare)
     return {
       text: `You're being caught by ${TACTIC_LABELS[trend.type]}s ${direction} than earlier in your history${bucketLabel(bucket)}`,
-      significance: deltaPoints
+      significance: deltaShare * bucket.totalMistakes
     }
   })
 }
