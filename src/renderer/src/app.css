@@ -74,6 +74,7 @@ button:focus-visible {
   border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
+  box-shadow: inset 0 -2px 0 rgba(35, 31, 23, 0.18);
 }
 
 .button-primary:hover:not(:disabled) {
