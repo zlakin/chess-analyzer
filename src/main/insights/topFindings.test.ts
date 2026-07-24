@@ -20,6 +20,7 @@ function bucket(overrides: Partial<InsightsBucket>): InsightsBucket {
     weakOpenings: [],
     trend: [],
     recentMistakes: [],
+    tacticTrends: [],
     ...overrides
   }
 }
@@ -130,6 +131,28 @@ describe('synthesizeTopFindings', () => {
     const timePressureFindings = findings.filter((f) => f.text.includes('little time'))
     expect(timePressureFindings).toHaveLength(1)
     expect(timePressureFindings[0].text).toContain('5 of your mistakes')
+  })
+
+  it('surfaces a trend finding when a tactic is being caught more often over time', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [bucket({ tacticTrends: [{ type: 'fork', olderShare: 0.2, newerShare: 0.6 }] })]
+    }
+    const findings = synthesizeTopFindings(report)
+    const trendFinding = findings.find((f) => f.text.includes('fork') && f.text.includes('more often'))
+    expect(trendFinding).toBeDefined()
+  })
+
+  it('surfaces a trend finding phrased as "less often" when a tactic\'s share dropped', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [bucket({ tacticTrends: [{ type: 'pin', olderShare: 0.6, newerShare: 0.2 }] })]
+    }
+    const findings = synthesizeTopFindings(report)
+    const trendFinding = findings.find((f) => f.text.includes('pin') && f.text.includes('less often'))
+    expect(trendFinding).toBeDefined()
   })
 
   it('ranks findings by significance, most significant first', () => {

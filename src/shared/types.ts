@@ -184,6 +184,12 @@ export interface MistakeSummary {
   punishedByTactics: TacticType[]
 }
 
+export interface TacticTrend {
+  type: TacticType
+  olderShare: number
+  newerShare: number
+}
+
 export interface InsightsBucket {
   key: InsightsBucketKey
   gamesCount: number
@@ -197,6 +203,7 @@ export interface InsightsBucket {
   weakOpenings: OpeningStat[]
   trend: TrendPoint[]
   recentMistakes: MistakeSummary[]
+  tacticTrends: TacticTrend[]
 }
 
 export interface TopFinding {

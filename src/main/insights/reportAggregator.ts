@@ -7,6 +7,7 @@ import type {
   MistakeSummary,
   OpeningStat,
   PhaseBreakdown,
+  TacticTrend,
   TacticType,
   TimeControlCategory
 } from '../../shared/types'
@@ -16,6 +17,8 @@ import { buildTrend } from './trendBucketing'
 const MIN_GAMES_FOR_BUCKET = 5
 const MIN_GAMES_PER_OPENING = 3
 const MAX_RECENT_MISTAKES = 20
+const MIN_MISTAKES_PER_HALF_FOR_TREND = 3
+const TREND_SHARE_DELTA_THRESHOLD = 0.15
 
 function averageAccuracy(records: GameInsightRecord[]): number {
   if (records.length === 0) return 0
@@ -49,6 +52,35 @@ function tallyTactics(
     }
   }
   return breakdown
+}
+
+// Splits records at their chronological midpoint and compares each
+// tactic's share of punished-by mistakes between the two halves --
+// surfaces only tactics whose share moved by at least
+// TREND_SHARE_DELTA_THRESHOLD, and only when both halves have enough
+// mistakes to make the comparison meaningful.
+function tacticTrends(records: GameInsightRecord[]): TacticTrend[] {
+  const sorted = [...records].sort((a, b) => a.endTime - b.endTime)
+  const midpoint = Math.floor(sorted.length / 2)
+  const older = sorted.slice(0, midpoint)
+  const newer = sorted.slice(midpoint)
+
+  const olderCounts = tallyTactics(older, (m) => m.punishedByTactics)
+  const newerCounts = tallyTactics(newer, (m) => m.punishedByTactics)
+  const olderTotal = Object.values(olderCounts).reduce((sum, n) => sum + n, 0)
+  const newerTotal = Object.values(newerCounts).reduce((sum, n) => sum + n, 0)
+
+  if (olderTotal < MIN_MISTAKES_PER_HALF_FOR_TREND || newerTotal < MIN_MISTAKES_PER_HALF_FOR_TREND) return []
+
+  const trends: TacticTrend[] = []
+  for (const type of TACTIC_TYPES) {
+    const olderShare = olderCounts[type] / olderTotal
+    const newerShare = newerCounts[type] / newerTotal
+    if (Math.abs(newerShare - olderShare) >= TREND_SHARE_DELTA_THRESHOLD) {
+      trends.push({ type, olderShare, newerShare })
+    }
+  }
+  return trends
 }
 
 function timePressureCount(records: GameInsightRecord[]): number {
@@ -113,7 +145,8 @@ function buildBucket(key: InsightsBucketKey, records: GameInsightRecord[]): Insi
     timePressureCount: timePressureCount(records),
     weakOpenings: weakOpenings(records),
     trend: buildTrend(records),
-    recentMistakes: recentMistakes(records)
+    recentMistakes: recentMistakes(records),
+    tacticTrends: tacticTrends(records)
   }
 }
 

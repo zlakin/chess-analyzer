@@ -141,6 +141,37 @@ describe('buildInsightsReport', () => {
     expect(overall.weakOpenings).toEqual([{ name: 'Caro-Kann Defense, Classical', games: 3, accuracy: 65 }])
   })
 
+  it('flags a tactic trend when its punished-by share shifts by 15+ points between the older and newer half of games', () => {
+    const olderGames = Array.from({ length: 5 }, (_, i) =>
+      record({
+        gameUrl: `old${i}`,
+        endTime: i,
+        mistakes: [mistake({ punishedByTactics: ['fork'] }), mistake({ punishedByTactics: ['pin'] })]
+      })
+    )
+    const newerGames = Array.from({ length: 5 }, (_, i) =>
+      record({
+        gameUrl: `new${i}`,
+        endTime: 100 + i,
+        mistakes: [mistake({ punishedByTactics: ['fork'] }), mistake({ punishedByTactics: ['fork'] })]
+      })
+    )
+
+    const report = buildInsightsReport([...olderGames, ...newerGames], null)
+    const overall = report.buckets.find((b) => b.key === 'overall')!
+
+    // fork share: older half 5/10 = 50%, newer half 10/10 = 100% -- a 50-point jump.
+    const forkTrend = overall.tacticTrends.find((t) => t.type === 'fork')
+    expect(forkTrend?.olderShare).toBeCloseTo(0.5)
+    expect(forkTrend?.newerShare).toBeCloseTo(1)
+  })
+
+  it('reports no tactic trends when there are too few mistakes in either half to compare', () => {
+    const records = [record({ gameUrl: 'g1', mistakes: [mistake({ punishedByTactics: ['fork'] })] })]
+    const report = buildInsightsReport(records, null)
+    expect(report.buckets.find((b) => b.key === 'overall')!.tacticTrends).toEqual([])
+  })
+
   it('builds a chronological trend from the records', () => {
     const records = [
       record({ gameUrl: 'g1', endTime: 200, accuracy: 80 }),
