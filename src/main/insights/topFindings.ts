@@ -1,12 +1,21 @@
-import type { InsightsBucket, InsightsReport, PhaseBreakdown, TopFinding } from '../../shared/types'
+import type { InsightsBucket, InsightsReport, PhaseBreakdown, TacticType, TopFinding } from '../../shared/types'
 
 const MIN_MISTAKES_FOR_PHASE_FINDING = 5
 const PHASE_SHARE_THRESHOLD = 0.5
-const MIN_MISTAKES_FOR_HUNGPIECE_FINDING = 5
-const HUNGPIECE_SHARE_THRESHOLD = 0.3
+const MIN_COUNT_FOR_TACTIC_FINDING = 3
+const TACTIC_SHARE_THRESHOLD = 0.25
 const MIN_TIME_PRESSURE_FOR_FINDING = 3
 const TIME_PRESSURE_SHARE_THRESHOLD = 0.3
 const ACCURACY_GAP_FOR_OPENING_FINDING = 5
+
+const TACTIC_LABELS: Record<TacticType, string> = {
+  fork: 'fork',
+  pin: 'pin',
+  skewer: 'skewer',
+  discovered_attack: 'discovered attack',
+  back_rank_mate: 'back-rank mate',
+  hung_piece: 'hung piece'
+}
 
 function bucketLabel(bucket: InsightsBucket): string {
   return bucket.key === 'overall' ? '' : ` in ${bucket.key}`
@@ -37,15 +46,29 @@ function phaseFinding(bucket: InsightsBucket): TopFinding | null {
   }
 }
 
-function hungPieceFinding(bucket: InsightsBucket): TopFinding | null {
-  if (bucket.totalMistakes < MIN_MISTAKES_FOR_HUNGPIECE_FINDING) return null
-  const share = bucket.hungPieceCount / bucket.totalMistakes
-  if (share < HUNGPIECE_SHARE_THRESHOLD) return null
+// Runs once for missedTacticBreakdown (what the player failed to find)
+// and once for tacticBreakdown (what actually punished them) -- same
+// thresholding logic, different verb in the generated sentence.
+function tacticFindings(
+  bucket: InsightsBucket,
+  breakdown: Record<TacticType, number>,
+  verb: string
+): TopFinding[] {
+  const total = Object.values(breakdown).reduce((sum, n) => sum + n, 0)
+  if (total === 0) return []
 
-  return {
-    text: `${bucket.hungPieceCount} of your ${bucket.totalMistakes} mistakes simply hung a piece${bucketLabel(bucket)}`,
-    significance: share * bucket.totalMistakes
+  const findings: TopFinding[] = []
+  for (const [tag, count] of Object.entries(breakdown) as Array<[TacticType, number]>) {
+    if (count < MIN_COUNT_FOR_TACTIC_FINDING) continue
+    const share = count / total
+    if (share < TACTIC_SHARE_THRESHOLD) continue
+
+    findings.push({
+      text: `You've ${verb} ${count} ${TACTIC_LABELS[tag]}${count === 1 ? '' : 's'} in your last ${bucket.gamesCount} games${bucketLabel(bucket)}`,
+      significance: share * total
+    })
   }
+  return findings
 }
 
 function timePressureFinding(bucket: InsightsBucket): TopFinding | null {
@@ -76,9 +99,15 @@ export function synthesizeTopFindings(report: Omit<InsightsReport, 'topFindings'
   for (const bucket of report.buckets) {
     if (!bucket.hasEnoughData) continue
 
-    for (const candidate of [phaseFinding(bucket), hungPieceFinding(bucket), timePressureFinding(bucket)]) {
-      if (candidate) findings.push(candidate)
-    }
+    const phase = phaseFinding(bucket)
+    if (phase) findings.push(phase)
+
+    findings.push(...tacticFindings(bucket, bucket.missedTacticBreakdown, 'missed'))
+    findings.push(...tacticFindings(bucket, bucket.tacticBreakdown, 'been caught by'))
+
+    const timePressure = timePressureFinding(bucket)
+    if (timePressure) findings.push(timePressure)
+
     findings.push(...openingFindings(bucket))
   }
 

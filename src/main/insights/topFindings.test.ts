@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { synthesizeTopFindings } from './topFindings'
-import type { InsightsBucket, InsightsReport } from '../../shared/types'
+import type { InsightsBucket, InsightsReport, TacticType } from '../../shared/types'
+
+function emptyTacticBreakdown(): Record<TacticType, number> {
+  return { fork: 0, pin: 0, skewer: 0, discovered_attack: 0, back_rank_mate: 0, hung_piece: 0 }
+}
 
 function bucket(overrides: Partial<InsightsBucket>): InsightsBucket {
   return {
@@ -10,11 +14,12 @@ function bucket(overrides: Partial<InsightsBucket>): InsightsBucket {
     totalMistakes: 10,
     averageAccuracy: 80,
     phaseBreakdown: { opening: 1, middlegame: 2, endgame: 7 },
-    hungPieceCount: 2,
-    positionalCount: 8,
+    tacticBreakdown: emptyTacticBreakdown(),
+    missedTacticBreakdown: emptyTacticBreakdown(),
     timePressureCount: 0,
     weakOpenings: [],
     trend: [],
+    recentMistakes: [],
     ...overrides
   }
 }
@@ -48,6 +53,43 @@ describe('synthesizeTopFindings', () => {
       buckets: [bucket({ hasEnoughData: false })]
     }
     expect(synthesizeTopFindings(report)).toEqual([])
+  })
+
+  it('surfaces a "been caught by" finding when a tactic is a large share of what punished the player', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [bucket({ tacticBreakdown: { ...emptyTacticBreakdown(), fork: 4, hung_piece: 1 } })]
+    }
+    const findings = synthesizeTopFindings(report)
+    const forkFinding = findings.find((f) => f.text.includes('caught by') && f.text.includes('fork'))
+    expect(forkFinding?.text).toContain('4 forks')
+  })
+
+  it('surfaces a "missed" finding separately from a "caught by" finding', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [
+        bucket({
+          tacticBreakdown: { ...emptyTacticBreakdown(), pin: 5 },
+          missedTacticBreakdown: { ...emptyTacticBreakdown(), fork: 5 }
+        })
+      ]
+    }
+    const findings = synthesizeTopFindings(report)
+    expect(findings.some((f) => f.text.includes('missed') && f.text.includes('fork'))).toBe(true)
+    expect(findings.some((f) => f.text.includes('caught by') && f.text.includes('pin'))).toBe(true)
+  })
+
+  it('does not surface a tactic finding below the count threshold', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [bucket({ tacticBreakdown: { ...emptyTacticBreakdown(), fork: 2, hung_piece: 8 } })]
+    }
+    const findings = synthesizeTopFindings(report)
+    expect(findings.some((f) => f.text.includes('fork'))).toBe(false)
   })
 
   it('surfaces a weak-opening finding when accuracy is well below the bucket average', () => {

@@ -20,7 +20,9 @@ import {
   isGameScanned,
   saveGameRecord,
   loadAllGameRecords,
-  ensureUsernameScope
+  ensureUsernameScope,
+  ensureSchemaVersion,
+  CURRENT_SCHEMA_VERSION
 } from './insightsStore'
 import type { GameInsightRecord } from '../../shared/types'
 
@@ -30,6 +32,7 @@ function record(gameUrl: string): GameInsightRecord {
     endTime: 1000,
     timeControlCategory: 'rapid',
     userColor: 'w',
+    opponentUsername: 'opponent',
     result: 'win',
     openingName: null,
     accuracy: 90,
@@ -47,12 +50,22 @@ describe('insightsStore', () => {
   })
 
   it('returns default scan metadata when nothing has been scanned yet', () => {
-    expect(loadScanMeta()).toEqual({ username: null, lastScanTime: null, scannedUrls: [] })
+    expect(loadScanMeta()).toEqual({
+      username: null,
+      lastScanTime: null,
+      scannedUrls: [],
+      schemaVersion: CURRENT_SCHEMA_VERSION
+    })
   })
 
   it('round-trips scan metadata', () => {
     saveScanMeta({ username: 'hikaru', lastScanTime: 12345 })
-    expect(loadScanMeta()).toEqual({ username: 'hikaru', lastScanTime: 12345, scannedUrls: [] })
+    expect(loadScanMeta()).toEqual({
+      username: 'hikaru',
+      lastScanTime: 12345,
+      scannedUrls: [],
+      schemaVersion: CURRENT_SCHEMA_VERSION
+    })
   })
 
   it('a game is not scanned until its record is saved', () => {
@@ -103,7 +116,12 @@ describe('insightsStore', () => {
       ensureUsernameScope('magnuscarlsen')
 
       expect(loadAllGameRecords()).toEqual([])
-      expect(loadScanMeta()).toEqual({ username: 'magnuscarlsen', lastScanTime: null, scannedUrls: [] })
+      expect(loadScanMeta()).toEqual({
+        username: 'magnuscarlsen',
+        lastScanTime: null,
+        scannedUrls: [],
+        schemaVersion: CURRENT_SCHEMA_VERSION
+      })
     })
 
     it('records the username immediately, before any games are cached, so an interrupted scan is not mistaken for having no tracked user', () => {
@@ -114,6 +132,45 @@ describe('insightsStore', () => {
       ensureUsernameScope('magnuscarlsen')
 
       expect(loadScanMeta().username).toBe('magnuscarlsen')
+    })
+  })
+
+  describe('ensureSchemaVersion', () => {
+    it('is a no-op when the stored schema version already matches', () => {
+      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      ensureSchemaVersion()
+
+      expect(loadAllGameRecords()).toHaveLength(1)
+    })
+
+    it('clears the cache and bumps the version when the stored version is stale', () => {
+      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      saveScanMeta({ schemaVersion: 0 })
+
+      ensureSchemaVersion()
+
+      expect(loadAllGameRecords()).toEqual([])
+      expect(loadScanMeta().schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    })
+
+    it('treats a scan-meta.json written before schema versioning existed as stale', () => {
+      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      // Simulate pre-versioning data: no schemaVersion field at all.
+      saveScanMeta({ username: 'hikaru', lastScanTime: 500, scannedUrls: ['https://www.chess.com/game/live/1'] })
+      // saveScanMeta always merges a patch onto a fresh loadScanMeta() read
+      // from disk, so routing a version-less object back through it can't
+      // actually omit schemaVersion from the persisted file (the fresh
+      // read still has it, and the patch has no key to overwrite it with).
+      // Write directly to disk instead, to simulate a real pre-upgrade
+      // scan-meta.json that predates the schemaVersion field entirely.
+      const meta = loadScanMeta()
+      // @ts-expect-error -- deliberately constructing a pre-versioning shape
+      delete meta.schemaVersion
+      writeFileSync(join(userDataDir, 'scan-meta.json'), JSON.stringify(meta), 'utf-8')
+
+      ensureSchemaVersion()
+
+      expect(loadAllGameRecords()).toEqual([])
     })
   })
 

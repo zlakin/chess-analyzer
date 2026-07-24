@@ -124,7 +124,12 @@ export interface GameInsightMistake {
   ply: number
   classification: 'mistake' | 'blunder'
   phase: GamePhase
-  isHungPiece: boolean
+  cpLoss: number
+  fenBefore: string
+  playedMoveUci: string
+  bestMoveUci: string
+  missedTactics: TacticType[]
+  punishedByTactics: TacticType[]
   clockSecondsRemaining: number | null
   isTimePressure: boolean
 }
@@ -134,6 +139,7 @@ export interface GameInsightRecord {
   endTime: number
   timeControlCategory: TimeControlCategory
   userColor: 'w' | 'b'
+  opponentUsername: string
   result: 'win' | 'loss' | 'draw'
   openingName: string | null
   accuracy: number
@@ -144,6 +150,7 @@ export interface ScanMeta {
   username: string | null
   lastScanTime: number | null
   scannedUrls: string[]
+  schemaVersion: number
 }
 
 export interface PhaseBreakdown {
@@ -166,6 +173,17 @@ export interface TrendPoint {
 
 export type InsightsBucketKey = 'overall' | TimeControlCategory
 
+export interface MistakeSummary {
+  gameUrl: string
+  endTime: number
+  opponentUsername: string
+  ply: number
+  phase: GamePhase
+  cpLoss: number
+  missedTactics: TacticType[]
+  punishedByTactics: TacticType[]
+}
+
 export interface InsightsBucket {
   key: InsightsBucketKey
   gamesCount: number
@@ -173,11 +191,12 @@ export interface InsightsBucket {
   totalMistakes: number
   averageAccuracy: number
   phaseBreakdown: PhaseBreakdown
-  hungPieceCount: number
-  positionalCount: number
+  tacticBreakdown: Record<TacticType, number>
+  missedTacticBreakdown: Record<TacticType, number>
   timePressureCount: number
   weakOpenings: OpeningStat[]
   trend: TrendPoint[]
+  recentMistakes: MistakeSummary[]
 }
 
 export interface TopFinding {

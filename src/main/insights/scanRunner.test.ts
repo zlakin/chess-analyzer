@@ -6,6 +6,7 @@ const isGameScannedMock = vi.fn()
 const saveGameRecordMock = vi.fn()
 const saveScanMetaMock = vi.fn()
 const ensureUsernameScopeMock = vi.fn()
+const ensureSchemaVersionMock = vi.fn()
 
 vi.mock('../chesscom/chessComClient', () => ({
   fetchRecentGames: (username: string, limit?: number) => fetchRecentGamesMock(username, limit)
@@ -15,7 +16,8 @@ vi.mock('./insightsStore', () => ({
   isGameScanned: (url: string) => isGameScannedMock(url),
   saveGameRecord: (record: unknown) => saveGameRecordMock(record),
   saveScanMeta: (patch: unknown) => saveScanMetaMock(patch),
-  ensureUsernameScope: (username: string) => ensureUsernameScopeMock(username)
+  ensureUsernameScope: (username: string) => ensureUsernameScopeMock(username),
+  ensureSchemaVersion: () => ensureSchemaVersionMock()
 }))
 
 import { runScan } from './scanRunner'
@@ -52,6 +54,7 @@ describe('runScan', () => {
     saveGameRecordMock.mockReset()
     saveScanMetaMock.mockReset()
     ensureUsernameScopeMock.mockReset()
+    ensureSchemaVersionMock.mockReset()
     isGameScannedMock.mockReturnValue(false)
   })
 

@@ -8,6 +8,7 @@ function record(endTime: number, accuracy: number): GameInsightRecord {
     endTime,
     timeControlCategory: 'rapid',
     userColor: 'w',
+    opponentUsername: 'opponent',
     result: 'win',
     openingName: null,
     accuracy,

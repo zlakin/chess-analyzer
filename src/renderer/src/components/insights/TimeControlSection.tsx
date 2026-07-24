@@ -34,7 +34,8 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
       <h3>{BUCKET_LABELS[bucket.key]}</h3>
       <p className="bucket-summary">
         {bucket.gamesCount} games &middot; {bucket.totalMistakes} mistakes/blunders &middot;{' '}
-        {bucket.hungPieceCount} hung a piece &middot; {bucket.timePressureCount} under time pressure
+        {bucket.tacticBreakdown.hung_piece} hung a piece &middot; {bucket.timePressureCount} under time
+        pressure
       </p>
 
       <ResponsiveContainer width="100%" height={120}>

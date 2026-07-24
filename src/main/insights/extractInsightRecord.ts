@@ -2,10 +2,12 @@ import type {
   ChessComGameSummary,
   GameAnalysisResult,
   GameInsightMistake,
-  GameInsightRecord
+  GameInsightRecord,
+  TacticType
 } from '../../shared/types'
 import { gamePhaseAt } from './phaseHeuristic'
-import { isHungPieceBlunder } from './hungPieceDetector'
+import { detectTactics } from '../analysis/tacticDetector'
+import { computeMoveEvalDelta } from '../../shared/engineMath'
 import {
   resolveTimeControlCategory,
   parseClockSeconds,
@@ -23,6 +25,10 @@ function resultFor(color: 'w' | 'b', game: ChessComGameSummary): 'win' | 'loss' 
   return 'draw'
 }
 
+function tacticsFor(fen: string, moveUci: string | undefined): TacticType[] {
+  return moveUci ? detectTactics(fen, moveUci) : []
+}
+
 export function extractInsightRecord(
   game: ChessComGameSummary,
   analysis: GameAnalysisResult,
@@ -30,6 +36,7 @@ export function extractInsightRecord(
 ): GameInsightRecord {
   const normalizedUsername = username.trim().toLowerCase()
   const userColor: 'w' | 'b' = game.black.username.toLowerCase() === normalizedUsername ? 'b' : 'w'
+  const opponentUsername = userColor === 'w' ? game.black.username : game.white.username
 
   const clockSeconds = parseClockSeconds(game.pgn)
   const hasClockData = clockSeconds.length === analysis.moves.length
@@ -45,11 +52,19 @@ export function extractInsightRecord(
     )
     .map((move) => {
       const clockSecondsRemaining = hasClockData ? clockSeconds[move.ply - 1] : null
+      const bestMoveUci = move.evalBefore.lines[0]?.moveUci
+      const opponentBestMoveUci = move.evalAfter.lines[0]?.moveUci
+
       return {
         ply: move.ply,
         classification: move.classification as 'mistake' | 'blunder',
         phase: gamePhaseAt(move.fenAfter, move.ply),
-        isHungPiece: isHungPieceBlunder(move.fenAfter, move.evalAfter.lines[0]),
+        cpLoss: computeMoveEvalDelta(move.evalBefore, move.evalAfter, move.moveUci).cpLoss,
+        fenBefore: move.fenBefore,
+        playedMoveUci: move.moveUci,
+        bestMoveUci: bestMoveUci ?? move.moveUci,
+        missedTactics: tacticsFor(move.fenBefore, bestMoveUci),
+        punishedByTactics: tacticsFor(move.fenAfter, opponentBestMoveUci),
         clockSecondsRemaining,
         isTimePressure:
           clockSecondsRemaining !== null && baseSeconds !== null
@@ -63,6 +78,7 @@ export function extractInsightRecord(
     endTime: game.endTime,
     timeControlCategory: resolveTimeControlCategory(game.timeClass, game.timeControl),
     userColor,
+    opponentUsername,
     result: resultFor(userColor, game),
     openingName,
     accuracy: userColor === 'w' ? analysis.whiteAccuracy : analysis.blackAccuracy,

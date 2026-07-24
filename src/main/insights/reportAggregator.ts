@@ -1,16 +1,21 @@
 import type {
+  GameInsightMistake,
   GameInsightRecord,
   InsightsBucket,
   InsightsBucketKey,
   InsightsReport,
+  MistakeSummary,
   OpeningStat,
   PhaseBreakdown,
+  TacticType,
   TimeControlCategory
 } from '../../shared/types'
+import { TACTIC_TYPES } from '../../shared/types'
 import { buildTrend } from './trendBucketing'
 
 const MIN_GAMES_FOR_BUCKET = 5
 const MIN_GAMES_PER_OPENING = 3
+const MAX_RECENT_MISTAKES = 20
 
 function averageAccuracy(records: GameInsightRecord[]): number {
   if (records.length === 0) return 0
@@ -27,16 +32,23 @@ function phaseBreakdown(records: GameInsightRecord[]): PhaseBreakdown {
   return breakdown
 }
 
-function hungPieceCounts(records: GameInsightRecord[]): { hungPieceCount: number; positionalCount: number } {
-  let hungPieceCount = 0
-  let positionalCount = 0
+function emptyTacticBreakdown(): Record<TacticType, number> {
+  const breakdown = {} as Record<TacticType, number>
+  for (const type of TACTIC_TYPES) breakdown[type] = 0
+  return breakdown
+}
+
+function tallyTactics(
+  records: GameInsightRecord[],
+  pick: (mistake: GameInsightMistake) => TacticType[]
+): Record<TacticType, number> {
+  const breakdown = emptyTacticBreakdown()
   for (const record of records) {
     for (const mistake of record.mistakes) {
-      if (mistake.isHungPiece) hungPieceCount += 1
-      else positionalCount += 1
+      for (const tag of pick(mistake)) breakdown[tag] += 1
     }
   }
-  return { hungPieceCount, positionalCount }
+  return breakdown
 }
 
 function timePressureCount(records: GameInsightRecord[]): number {
@@ -67,9 +79,27 @@ function weakOpenings(records: GameInsightRecord[]): OpeningStat[] {
   return stats.sort((a, b) => a.accuracy - b.accuracy)
 }
 
+function recentMistakes(records: GameInsightRecord[]): MistakeSummary[] {
+  const all: MistakeSummary[] = []
+  for (const record of records) {
+    for (const mistake of record.mistakes) {
+      all.push({
+        gameUrl: record.gameUrl,
+        endTime: record.endTime,
+        opponentUsername: record.opponentUsername,
+        ply: mistake.ply,
+        phase: mistake.phase,
+        cpLoss: mistake.cpLoss,
+        missedTactics: mistake.missedTactics,
+        punishedByTactics: mistake.punishedByTactics
+      })
+    }
+  }
+  return all.sort((a, b) => b.endTime - a.endTime).slice(0, MAX_RECENT_MISTAKES)
+}
+
 function buildBucket(key: InsightsBucketKey, records: GameInsightRecord[]): InsightsBucket {
   const totalMistakes = records.reduce((sum, r) => sum + r.mistakes.length, 0)
-  const { hungPieceCount, positionalCount } = hungPieceCounts(records)
 
   return {
     key,
@@ -78,11 +108,12 @@ function buildBucket(key: InsightsBucketKey, records: GameInsightRecord[]): Insi
     totalMistakes,
     averageAccuracy: averageAccuracy(records),
     phaseBreakdown: phaseBreakdown(records),
-    hungPieceCount,
-    positionalCount,
+    tacticBreakdown: tallyTactics(records, (m) => m.punishedByTactics),
+    missedTacticBreakdown: tallyTactics(records, (m) => m.missedTactics),
     timePressureCount: timePressureCount(records),
     weakOpenings: weakOpenings(records),
-    trend: buildTrend(records)
+    trend: buildTrend(records),
+    recentMistakes: recentMistakes(records)
   }
 }
 

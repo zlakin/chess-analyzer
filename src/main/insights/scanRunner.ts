@@ -3,7 +3,7 @@ import { fetchRecentGames } from '../chesscom/chessComClient'
 import { parsePgn } from '../../shared/pgn'
 import { analyzeGame, type EvaluationEngine } from '../analysis/gameAnalyzer'
 import { extractInsightRecord } from './extractInsightRecord'
-import { ensureUsernameScope, isGameScanned, saveGameRecord, saveScanMeta } from './insightsStore'
+import { ensureSchemaVersion, ensureUsernameScope, isGameScanned, saveGameRecord, saveScanMeta } from './insightsStore'
 
 const SCAN_GAME_LIMIT = 100
 const SCAN_ANALYSIS_DEPTH = 14
@@ -15,6 +15,7 @@ export interface ScanRunnerOptions {
 }
 
 export async function runScan(username: string, options: ScanRunnerOptions): Promise<ScanOutcome> {
+  ensureSchemaVersion()
   ensureUsernameScope(username)
 
   const games = await fetchRecentGames(username, SCAN_GAME_LIMIT)

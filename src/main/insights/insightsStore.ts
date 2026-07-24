@@ -4,8 +4,14 @@ import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import type { GameInsightRecord, ScanMeta } from '../../shared/types'
 
+// Bump this whenever GameInsightMistake/GameInsightRecord's shape changes
+// in a way old cached JSON can't satisfy -- a mismatch wipes the cache
+// (see ensureSchemaVersion below), the same mechanism ensureUsernameScope
+// already uses for a tracked-username change.
+export const CURRENT_SCHEMA_VERSION = 1
+
 function defaultScanMeta(): ScanMeta {
-  return { username: null, lastScanTime: null, scannedUrls: [] }
+  return { username: null, lastScanTime: null, scannedUrls: [], schemaVersion: CURRENT_SCHEMA_VERSION }
 }
 
 function gamesDir(): string {
@@ -30,7 +36,11 @@ export function loadScanMeta(): ScanMeta {
     return {
       username: typeof parsed.username === 'string' ? parsed.username : null,
       lastScanTime: typeof parsed.lastScanTime === 'number' ? parsed.lastScanTime : null,
-      scannedUrls: Array.isArray(parsed.scannedUrls) ? parsed.scannedUrls : []
+      scannedUrls: Array.isArray(parsed.scannedUrls) ? parsed.scannedUrls : [],
+      // 0 never matches CURRENT_SCHEMA_VERSION, so a pre-versioning
+      // scan-meta.json (or a missing/corrupt field) always triggers
+      // ensureSchemaVersion's wipe below rather than being trusted.
+      schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 0
     }
   } catch {
     return defaultScanMeta()
@@ -87,6 +97,26 @@ export function ensureUsernameScope(username: string): void {
     }
   }
   saveScanMeta({ username, lastScanTime: null, scannedUrls: [] })
+}
+
+// Old cached records were written before GameInsightMistake grew
+// cpLoss/fenBefore/missedTactics/etc -- there is no way to backfill those
+// fields without re-running the engine, so a version mismatch wipes the
+// cache exactly like a username change does, forcing a full rescan on the
+// next run. Called before ensureUsernameScope in runScan so a stale
+// cache is cleared regardless of whether the username also happens to be
+// changing at the same time.
+export function ensureSchemaVersion(): void {
+  const meta = loadScanMeta()
+  if (meta.schemaVersion === CURRENT_SCHEMA_VERSION) return
+
+  const dir = gamesDir()
+  if (existsSync(dir)) {
+    for (const fileName of readdirSync(dir)) {
+      if (fileName.endsWith('.json')) unlinkSync(join(dir, fileName))
+    }
+  }
+  saveScanMeta({ schemaVersion: CURRENT_SCHEMA_VERSION, lastScanTime: null, scannedUrls: [] })
 }
 
 export function saveGameRecord(record: GameInsightRecord): void {

@@ -47,7 +47,18 @@ describe('extractInsightRecord', () => {
     expect(record.result).toBe('win')
   })
 
-  it('only records mistakes/blunders made by the tracked user, tagging phase and hung-piece status', () => {
+  it("records the opponent's username, keyed off the user's own color", () => {
+    const analysis: GameAnalysisResult = {
+      moves: [move({ ply: 1, color: 'w', san: 'e4', classification: 'book', fenAfter: QUIET_FEN })],
+      whiteAccuracy: 95,
+      blackAccuracy: 80
+    }
+
+    const record = extractInsightRecord(chessComGame(), analysis, 'TestUser')
+    expect(record.opponentUsername).toBe('opponent')
+  })
+
+  it('only records mistakes/blunders made by the tracked user, tagging phase and punished-by tactics', () => {
     const analysis: GameAnalysisResult = {
       moves: [
         move({ ply: 1, color: 'w', san: 'e4', classification: 'book', fenAfter: QUIET_FEN }),
@@ -58,7 +69,7 @@ describe('extractInsightRecord', () => {
           classification: 'blunder',
           fenAfter: HUNG_ROOK_FEN,
           evalAfter: {
-            lines: [{ depth: 14, scoreCp: -900, scoreMate: null, moveUci: 'd8d1', pv: ['d8d1'] }]
+            lines: [{ depth: 14, scoreCp: 900, scoreMate: null, moveUci: 'd8d1', pv: ['d8d1'] }]
           }
         }),
         move({ ply: 26, color: 'b', san: 'Qxd1', classification: 'best', fenAfter: QUIET_FEN })
@@ -74,8 +85,41 @@ describe('extractInsightRecord', () => {
       ply: 25,
       classification: 'blunder',
       phase: 'middlegame',
-      isHungPiece: true
+      punishedByTactics: ['hung_piece']
     })
+  })
+
+  it('computes cpLoss and records the position/move context for a mistake', () => {
+    const analysis: GameAnalysisResult = {
+      moves: [
+        move({
+          ply: 25,
+          color: 'w',
+          san: 'Rd1??',
+          classification: 'blunder',
+          fenBefore: '3qk3/8/8/8/8/8/8/2R4K w - - 0 1',
+          fenAfter: HUNG_ROOK_FEN,
+          moveUci: 'c1d1',
+          evalBefore: {
+            lines: [{ depth: 14, scoreCp: 0, scoreMate: null, moveUci: 'h1h2', pv: ['h1h2'] }]
+          },
+          evalAfter: {
+            lines: [{ depth: 14, scoreCp: 900, scoreMate: null, moveUci: 'd8d1', pv: ['d8d1'] }]
+          }
+        })
+      ],
+      whiteAccuracy: 60,
+      blackAccuracy: 95
+    }
+
+    const record = extractInsightRecord(chessComGame(), analysis, 'testuser')
+
+    expect(record.mistakes[0]).toMatchObject({
+      fenBefore: '3qk3/8/8/8/8/8/8/2R4K w - - 0 1',
+      playedMoveUci: 'c1d1',
+      bestMoveUci: 'h1h2'
+    })
+    expect(record.mistakes[0].cpLoss).toBeGreaterThan(0)
   })
 
   it('categorizes the time control from the game', () => {
