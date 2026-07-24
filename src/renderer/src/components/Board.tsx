@@ -16,7 +16,7 @@ export function Board({ fen, bestMoveUci, currentMove }: BoardProps): JSX.Elemen
         {
           startSquare: bestMoveUci.slice(0, 2),
           endSquare: bestMoveUci.slice(2, 4),
-          color: 'rgb(21, 128, 61)'
+          color: 'var(--accent)'
         }
       ]
     : []
