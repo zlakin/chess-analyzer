@@ -9,7 +9,7 @@ describe('isBookMove', () => {
   })
 
   it('returns false once the game diverges from every known book line', () => {
-    const history = ['e4', 'c5', 'Nf3', 'e6']
+    const history = ['e4', 'c5', 'Nf3', 'g6']
     expect(isBookMove(history, 4)).toBe(false)
   })
 
@@ -36,7 +36,7 @@ describe('matchOpeningName', () => {
   })
 
   it('returns null for a game that deviates before completing any book line', () => {
-    expect(matchOpeningName(['e4', 'e5', 'Nf3', 'd6'])).toBeNull()
+    expect(matchOpeningName(['e4', 'e5', 'Nf3', 'a6'])).toBeNull()
   })
 
   it('returns null for a game shorter than every book line', () => {
