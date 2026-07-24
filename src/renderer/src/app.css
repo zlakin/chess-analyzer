@@ -269,7 +269,7 @@ textarea:focus {
 }
 
 .eval-bar-white {
-  background: var(--text);
+  background: var(--eval-white);
 }
 
 .eval-bar-score {
