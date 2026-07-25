@@ -18,7 +18,7 @@ const BUCKET_LABELS: Record<InsightsBucket['key'], string> = {
 export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Element {
   if (!bucket.hasEnoughData) {
     return (
-      <div className="time-control-section">
+      <div className="time-control-section time-control-section-empty">
         <h3>{BUCKET_LABELS[bucket.key]}</h3>
         <p className="not-enough-data">Not enough games yet ({bucket.gamesCount} scanned).</p>
       </div>
@@ -63,24 +63,27 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
       </ResponsiveContainer>
 
       {bucket.weakOpenings.length > 0 && (
-        <table className="weak-openings-table">
-          <thead>
-            <tr>
-              <th>Opening</th>
-              <th>Games</th>
-              <th>Accuracy</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bucket.weakOpenings.map((opening) => (
-              <tr key={opening.name}>
-                <td>{opening.name}</td>
-                <td>{opening.games}</td>
-                <td>{opening.accuracy.toFixed(1)}%</td>
+        <>
+          <h4 className="insights-subheading">Weak openings</h4>
+          <table className="weak-openings-table">
+            <thead>
+              <tr>
+                <th>Opening</th>
+                <th>Games</th>
+                <th>Accuracy</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {bucket.weakOpenings.map((opening) => (
+                <tr key={opening.name}>
+                  <td>{opening.name}</td>
+                  <td>{opening.games}</td>
+                  <td>{opening.accuracy.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
 
       {bucket.trend.length > 1 && (
@@ -100,7 +103,12 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
         </ResponsiveContainer>
       )}
 
-      <RecentMistakesList mistakes={bucket.recentMistakes} />
+      {bucket.recentMistakes.length > 0 && (
+        <>
+          <h4 className="insights-subheading">Recent mistakes</h4>
+          <RecentMistakesList mistakes={bucket.recentMistakes} />
+        </>
+      )}
     </div>
   )
 }

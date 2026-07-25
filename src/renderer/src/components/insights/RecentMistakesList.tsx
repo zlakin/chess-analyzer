@@ -25,8 +25,7 @@ export function RecentMistakesList({ mistakes }: RecentMistakesListProps): JSX.E
         return (
           <li key={`${mistake.gameUrl}-${mistake.ply}`} className="recent-mistake-row">
             <span className="recent-mistake-meta">
-              {new Date(mistake.endTime * 1000).toLocaleDateString()} &middot; vs {mistake.opponentUsername}
-              &middot; move {Math.ceil(mistake.ply / 2)} &middot; {PHASE_LABELS[mistake.phase]}
+              {`${new Date(mistake.endTime * 1000).toLocaleDateString()} · vs ${mistake.opponentUsername} · move ${Math.ceil(mistake.ply / 2)} · ${PHASE_LABELS[mistake.phase]}`}
             </span>
             <span className="recent-mistake-tags">
               {tags.length === 0

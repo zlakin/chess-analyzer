@@ -141,6 +141,25 @@ describe('buildInsightsReport', () => {
     expect(overall.weakOpenings).toEqual([{ name: 'Caro-Kann Defense, Classical', games: 3, accuracy: 65 }])
   })
 
+  it('excludes an opening that clears the game-count threshold but is not actually below the bucket average', () => {
+    const records = [
+      record({ gameUrl: 'g1', openingName: 'Italian Game', accuracy: 92 }),
+      record({ gameUrl: 'g2', openingName: 'Italian Game', accuracy: 94 }),
+      record({ gameUrl: 'g3', openingName: 'Italian Game', accuracy: 93 }),
+      record({ gameUrl: 'g4', openingName: 'Sicilian Defense', accuracy: 60 }),
+      record({ gameUrl: 'g5', openingName: 'Sicilian Defense', accuracy: 62 }),
+      record({ gameUrl: 'g6', openingName: 'Sicilian Defense', accuracy: 61 })
+    ]
+
+    const report = buildInsightsReport(records, null)
+    const overall = report.buckets.find((b) => b.key === 'overall')!
+
+    // Bucket average is 77. Italian Game averages 93 -- *above* average, not a weakness,
+    // even though it has enough games -- it must not appear here. Sicilian Defense
+    // averages 61, well below the bucket average, so it's the only genuine weak opening.
+    expect(overall.weakOpenings).toEqual([{ name: 'Sicilian Defense', games: 3, accuracy: 61 }])
+  })
+
   it('flags a tactic trend when its punished-by share shifts by 15+ points between the older and newer half of games', () => {
     const olderGames = Array.from({ length: 5 }, (_, i) =>
       record({

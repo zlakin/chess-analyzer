@@ -1,4 +1,5 @@
 import type { InsightsBucket, InsightsReport, PhaseBreakdown, TacticType, TopFinding } from '../../shared/types'
+import { ACCURACY_GAP_FOR_OPENING_FINDING } from './reportAggregator'
 
 const MIN_MISTAKES_FOR_PHASE_FINDING = 5
 const PHASE_SHARE_THRESHOLD = 0.5
@@ -6,7 +7,6 @@ const MIN_COUNT_FOR_TACTIC_FINDING = 3
 const TACTIC_SHARE_THRESHOLD = 0.25
 const MIN_TIME_PRESSURE_FOR_FINDING = 3
 const TIME_PRESSURE_SHARE_THRESHOLD = 0.3
-const ACCURACY_GAP_FOR_OPENING_FINDING = 5
 
 const TACTIC_LABELS: Record<TacticType, string> = {
   fork: 'fork',

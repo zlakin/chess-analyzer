@@ -20,6 +20,12 @@ const MAX_RECENT_MISTAKES = 20
 const MIN_MISTAKES_PER_HALF_FOR_TREND = 3
 const TREND_SHARE_DELTA_THRESHOLD = 0.15
 
+// Shared with topFindings.ts's openingFindings(), which turns the same gap
+// into "Your accuracy in the X is Y% vs Z% overall" prose -- one threshold
+// so the weak-openings table and the findings it can generate never disagree
+// about what counts as weak.
+export const ACCURACY_GAP_FOR_OPENING_FINDING = 5
+
 function averageAccuracy(records: GameInsightRecord[]): number {
   if (records.length === 0) return 0
   return records.reduce((sum, r) => sum + r.accuracy, 0) / records.length
@@ -102,10 +108,13 @@ function weakOpenings(records: GameInsightRecord[]): OpeningStat[] {
     byOpening.set(record.openingName, existing)
   }
 
+  const bucketAccuracy = averageAccuracy(records)
   const stats: OpeningStat[] = []
   for (const [name, group] of byOpening) {
     if (group.length < MIN_GAMES_PER_OPENING) continue
-    stats.push({ name, games: group.length, accuracy: averageAccuracy(group) })
+    const accuracy = averageAccuracy(group)
+    if (bucketAccuracy - accuracy < ACCURACY_GAP_FOR_OPENING_FINDING) continue
+    stats.push({ name, games: group.length, accuracy })
   }
 
   return stats.sort((a, b) => a.accuracy - b.accuracy)

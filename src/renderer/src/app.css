@@ -506,6 +506,10 @@ textarea:focus {
   margin: 0 0 0.25rem;
 }
 
+.time-control-section-empty {
+  align-self: start;
+}
+
 .bucket-summary {
   color: var(--text-muted);
   font-size: 0.85rem;
@@ -516,10 +520,19 @@ textarea:focus {
   color: var(--text-muted);
 }
 
+.insights-subheading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  margin: 1rem 0 0.4rem;
+}
+
 .weak-openings-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 0.75rem;
+  margin-top: 0;
   font-size: 0.85rem;
 }
 
@@ -549,7 +562,7 @@ textarea:focus {
 
 .recent-mistakes-list {
   list-style: none;
-  margin: 1rem 0 0;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -558,10 +571,9 @@ textarea:focus {
 
 .recent-mistake-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
   padding: 0.45rem 0.65rem;
   background: var(--panel-elevated);
   border: 1px solid var(--border);
