@@ -2,19 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Netlify Function that sends a plain-text "thanks for joining" email to each wishlist signup, triggered by a Netlify Forms outgoing webhook.
+**Goal:** Add a Netlify Function that sends a plain-text "thanks for joining" email to each wishlist signup, invoked automatically by Netlify's `formSubmitted` event-function mechanism.
 
-**Architecture:** One Netlify Function (`netlify/functions/send-welcome-email.js`) calling Resend's REST API directly via `fetch` — no new npm dependency. `netlify.toml` gets an explicit `[functions]` block. No database, no HTML template, no test suite (matches the site's existing build-step-free approach) — verification is a real end-to-end send after manual Netlify/Resend dashboard setup.
+**Architecture:** One Netlify event-triggered Function (`netlify/functions/send-welcome-email.mjs`, `export default { formSubmitted(event) {...} }`) calling Resend's REST API directly via `fetch` — no new npm dependency. `netlify.toml` gets an explicit `[functions]` block. No database, no HTML template, no test suite (matches the site's existing build-step-free approach) — verification is a real end-to-end send after manual Netlify/Resend dashboard setup.
 
-**Tech Stack:** Node.js (Netlify Functions runtime, CommonJS), Resend REST API (plain HTTP, no SDK).
+**Revision note (2026-07-25):** this plan originally specified a Netlify Forms "Outgoing webhook" (a publicly-POST-able HTTP endpoint, `exports.handler`/`{statusCode, body}` contract). The final whole-branch review found Netlify's built-in event-triggered function mechanism was strictly better (no public endpoint — Netlify verifies invocations internally — one less manual dashboard step, and a clearly-documented payload shape where the webhook's was ambiguous), and the repo owner chose to adopt it. This revision reflects that.
+
+**Tech Stack:** Node.js (Netlify Functions runtime, ES modules), Resend REST API (plain HTTP, no SDK).
 
 ## Global Constraints
 
 - No new npm dependency added anywhere in the repo — the function uses only the global `fetch` and Node built-ins.
 - No HTML email — plain text only, exact copy given in this plan (verbatim, not paraphrased).
-- No cryptographic webhook signature verification — a deliberate, already-approved tradeoff (see the design spec's "Security" section). Validation is payload-shape only: correct `form_name`, plausible `email`.
-- The function must return HTTP 200 in every case (malformed payload, wrong form, invalid email, or a failed Resend call) — there is no caller waiting on a meaningful error response, and nothing should be retried.
-- Config is entirely via Netlify environment variables — `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SITE_URL` — never hardcoded or committed.
+- No cryptographic webhook signature verification code — moot: Netlify verifies `formSubmitted` invocations internally before calling the handler, so there is no public endpoint left to protect (see the design spec's "Security" section).
+- The handler's return value is unused by the platform (`void`/`Promise<void>`) — there is no HTTP status-code contract to satisfy. Every branch (malformed/missing email, wrong form, a failed Resend call) logs via `console.log`/`console.error` and returns, nothing more.
+- Config is entirely via Netlify environment variables — `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SITE_URL` — never hardcoded or committed. `SITE_URL` falls back to Netlify's own `URL` env var, then a hardcoded placeholder, if unset.
 - Reply-to is hardcoded to `zacharylakin0@gmail.com` (already public in the site footer) — not an env var, matching how the footer itself hardcodes it.
 - This repo's git workflow: commit straight to `main`, no branches/worktrees/PRs.
 
@@ -23,115 +25,124 @@
 ### Task 1: Welcome-email Netlify Function
 
 **Files:**
-- Create: `netlify/functions/send-welcome-email.js`
-- Modify: `netlify.toml` (repo root)
+- Create: `netlify/functions/send-welcome-email.mjs` (this task supersedes
+  and replaces `netlify/functions/send-welcome-email.js` from the
+  original webhook-based implementation — delete the `.js` file as part
+  of this task, see Step 1)
+- Modify: `netlify.toml` (repo root) — no change needed beyond what's
+  already there (the `[functions]` block from the original
+  implementation is unchanged; event-triggered functions live in and
+  are bundled from the same `netlify/functions/` directory)
 
 **Interfaces:**
-- Consumes: a Netlify Forms outgoing-webhook POST body shaped like
-  `{ "payload": { "form_name": "wishlist", "data": { "email": "...", ... } } }`
-  (Netlify's documented outgoing-webhook payload shape for form
-  submissions — the `data` object holds the raw submitted field values).
+- Consumes: Netlify's `FormSubmittedEvent` — `event.data` is "an object
+  keyed by field name with string values, capturing the verified
+  submission exactly as received" (Netlify's own documented, current
+  API for this purpose — this resolves what was previously an
+  undocumented, ambiguous payload shape).
 - Consumes: `process.env.RESEND_API_KEY`, `process.env.RESEND_FROM_EMAIL`,
-  `process.env.SITE_URL` at runtime (set in the Netlify dashboard, not
-  by this task — the function must not throw if they're unset locally,
-  since there's no local test harness that provides them; see Step 3's
-  mock-based verification, which doesn't require real values).
+  `process.env.SITE_URL`, `process.env.URL` at runtime (set by Netlify
+  itself or the dashboard, not by this task — the function must not
+  throw if they're unset locally, since there's no local test harness
+  that provides them; see Step 3's mock-based verification, which
+  doesn't require real values).
 - Produces: nothing consumed by other tasks — this is the only task in
   this plan.
 
-- [ ] **Step 1: Write `netlify/functions/send-welcome-email.js`**
+- [ ] **Step 1: Replace `netlify/functions/send-welcome-email.js` with `netlify/functions/send-welcome-email.mjs`**
+
+```bash
+rm -f netlify/functions/send-welcome-email.js
+```
+
+Then write `netlify/functions/send-welcome-email.mjs`:
 
 ```js
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' }
-  }
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-  let submission
-  try {
-    submission = JSON.parse(event.body).payload
-  } catch {
-    // Malformed body - nothing to parse, nothing to send. Same 200
-    // no-op as the shape-validation branch below (see "Error handling"):
-    // there's no caller reacting to our status code either way.
-    return { statusCode: 200, body: 'Invalid payload' }
-  }
+export default {
+  async formSubmitted(event) {
+    const data = event.data ?? {}
+    const formName = data['form-name']
+    const email = typeof data.email === 'string' ? data.email.trim() : ''
 
-  const email = submission?.data?.email
-  const formName = submission?.form_name
-
-  if (formName !== 'wishlist' || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    // Not a real wishlist submission (wrong form, missing/malformed
-    // email) - acknowledge and do nothing. Not an error: Netlify Forms
-    // notifications aren't ours to reject, we just have nothing to send.
-    return { statusCode: 200, body: 'Ignored' }
-  }
-
-  const siteUrl = process.env.SITE_URL
-  const fromAddress = process.env.RESEND_FROM_EMAIL
-  const apiKey = process.env.RESEND_API_KEY
-
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: email,
-        reply_to: 'zacharylakin0@gmail.com',
-        subject: "You're on the Chess Analyzer wishlist",
-        text: [
-          'Thanks for joining the Chess Analyzer wishlist.',
-          '',
-          "Chess Analyzer is real and working today — engine analysis, accuracy",
-          'scoring, move classification, and tactical insights are all built.',
-          "Right now there's a Linux build; Windows and Mac are next. I'll email",
-          "you the moment there's a build for your platform.",
-          '',
-          `In the meantime: ${siteUrl}`,
-          '',
-          '— Zachary',
-        ].join('\n'),
-      }),
-    })
-
-    if (!res.ok) {
-      console.error('Resend API error', res.status, await res.text())
+    if (formName !== 'wishlist' || !email || email.length > 254 || !EMAIL_RE.test(email)) {
+      // Netlify only invokes this handler for submissions it already
+      // verified as non-spam - this check is just "is this our
+      // wishlist form with a plausible email," not spam filtering.
+      console.log('Ignoring non-wishlist or malformed submission', { formName, hasEmail: !!email })
+      return
     }
-  } catch (err) {
-    console.error('Failed to send welcome email', err)
-  }
 
-  // Always 200: the signup itself already succeeded via Netlify Forms
-  // before this function ever runs. A failed confirmation email is a
-  // logged, non-fatal side effect - there's no one waiting on this
-  // response and nothing to retry.
-  return { statusCode: 200, body: 'OK' }
+    const siteUrl = process.env.SITE_URL || process.env.URL
+    const fromAddress = process.env.RESEND_FROM_EMAIL
+    const apiKey = process.env.RESEND_API_KEY
+
+    if (!apiKey || !fromAddress) {
+      console.error('Missing RESEND_API_KEY or RESEND_FROM_EMAIL - skipping welcome email')
+      return
+    }
+
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromAddress,
+          to: email,
+          reply_to: 'zacharylakin0@gmail.com',
+          subject: "You're on the Chess Analyzer wishlist",
+          text: [
+            'Thanks for joining the Chess Analyzer wishlist.',
+            '',
+            "Chess Analyzer is real and working today — engine analysis, accuracy",
+            'scoring, move classification, and tactical insights are all built.',
+            "Right now there's a Linux build; Windows and Mac are next. I'll email",
+            "you the moment there's a build for your platform.",
+            '',
+            `In the meantime: ${siteUrl || 'https://chessanalyzer.app'}`,
+            '',
+            '— Zachary',
+          ].join('\n'),
+        }),
+      })
+
+      if (res.ok) {
+        console.log('Welcome email sent')
+      } else {
+        console.error('Resend API error', res.status, await res.text())
+      }
+    } catch (err) {
+      console.error('Failed to send welcome email', err)
+    }
+  },
 }
 ```
 
 - [ ] **Step 2: Verify syntax**
 
 ```bash
-node --check netlify/functions/send-welcome-email.js
+node --check netlify/functions/send-welcome-email.mjs
 ```
 
 Expected: no output, exit code 0.
 
-- [ ] **Step 3: Write and run a throwaway verification script (not committed) exercising all three branches**
+- [ ] **Step 3: Write and run a throwaway verification script (not committed) exercising all branches**
 
 This project has no automated test suite for the website/functions layer
 (a deliberate design decision — see the design spec), so this is a
 one-off smoke test to prove the logic before committing, not a permanent
-test file.
+test file. The handler's return value is always `undefined` now (no
+HTTP status contract), so these assertions check `fetchCalls` (did it
+call Resend?) and the sent body's contents instead of a status code.
 
 ```bash
 cat > /tmp/verify-welcome-email.mjs <<'EOF'
 import assert from 'node:assert/strict'
-import { handler } from '../home/zacharyl/chess/netlify/functions/send-welcome-email.js'
+import fn from '../home/zacharyl/chess/netlify/functions/send-welcome-email.mjs'
 
 let fetchCalls = []
 global.fetch = async (url, opts) => {
@@ -139,17 +150,16 @@ global.fetch = async (url, opts) => {
   return { ok: true, status: 200, text: async () => '' }
 }
 
-function makeEvent(payload) {
-  return { httpMethod: 'POST', body: JSON.stringify({ payload }) }
+function makeEvent(data) {
+  return { data }
 }
 
-// Case 1: valid wishlist submission -> calls Resend, returns 200
+// Case 1: valid wishlist submission -> calls Resend
 process.env.RESEND_API_KEY = 'test-key'
 process.env.RESEND_FROM_EMAIL = 'Chess Analyzer <wishlist@example.com>'
 process.env.SITE_URL = 'https://example.netlify.app'
 
-let res = await handler(makeEvent({ form_name: 'wishlist', data: { email: 'person@example.com' } }))
-assert.equal(res.statusCode, 200)
+await fn.formSubmitted(makeEvent({ 'form-name': 'wishlist', email: 'person@example.com' }))
 assert.equal(fetchCalls.length, 1)
 assert.equal(fetchCalls[0].url, 'https://api.resend.com/emails')
 const body = JSON.parse(fetchCalls[0].opts.body)
@@ -159,48 +169,58 @@ assert.equal(body.subject, "You're on the Chess Analyzer wishlist")
 assert.ok(body.text.includes('https://example.netlify.app'))
 console.log('Case 1 (valid submission) passed')
 
-// Case 2: wrong form name -> no fetch call, still 200
+// Case 2: wrong form name -> no fetch call
 fetchCalls = []
-res = await handler(makeEvent({ form_name: 'not-wishlist', data: { email: 'person@example.com' } }))
-assert.equal(res.statusCode, 200)
+await fn.formSubmitted(makeEvent({ 'form-name': 'not-wishlist', email: 'person@example.com' }))
 assert.equal(fetchCalls.length, 0)
 console.log('Case 2 (wrong form name) passed')
 
-// Case 3: malformed email -> no fetch call, still 200
+// Case 3: malformed email -> no fetch call
 fetchCalls = []
-res = await handler(makeEvent({ form_name: 'wishlist', data: { email: 'not-an-email' } }))
-assert.equal(res.statusCode, 200)
+await fn.formSubmitted(makeEvent({ 'form-name': 'wishlist', email: 'not-an-email' }))
 assert.equal(fetchCalls.length, 0)
 console.log('Case 3 (malformed email) passed')
 
-// Case 4: malformed JSON body -> 200 no-op (same as other invalid
-// shapes - see the Global Constraints note on always returning 200),
-// no fetch call
+// Case 4: missing data entirely -> no throw, no fetch call
 fetchCalls = []
-res = await handler({ httpMethod: 'POST', body: 'not json' })
-assert.equal(res.statusCode, 200)
+await fn.formSubmitted({})
 assert.equal(fetchCalls.length, 0)
-console.log('Case 4 (malformed JSON) passed')
+console.log('Case 4 (missing data) passed')
+
+// Case 5: SITE_URL unset -> falls back, doesn't send literal "undefined"
+fetchCalls = []
+delete process.env.SITE_URL
+delete process.env.URL
+await fn.formSubmitted(makeEvent({ 'form-name': 'wishlist', email: 'person2@example.com' }))
+assert.equal(fetchCalls.length, 1)
+const body2 = JSON.parse(fetchCalls[0].opts.body)
+assert.ok(!body2.text.includes('undefined'))
+console.log('Case 5 (missing SITE_URL) passed')
+
+// Case 6: missing RESEND_API_KEY -> no fetch call
+fetchCalls = []
+delete process.env.RESEND_API_KEY
+await fn.formSubmitted(makeEvent({ 'form-name': 'wishlist', email: 'person3@example.com' }))
+assert.equal(fetchCalls.length, 0)
+console.log('Case 6 (missing RESEND_API_KEY) passed')
 
 console.log('All cases passed')
 EOF
 node /tmp/verify-welcome-email.mjs
 ```
 
-Expected output: `Case 1 (valid submission) passed` through `Case 4
-(malformed JSON) passed`, then `All cases passed`, exit code 0. If any
-assertion fails, fix `send-welcome-email.js` and re-run — do not proceed
-to Step 4 until all four cases pass.
+Expected output: `Case 1 (valid submission) passed` through `Case 6
+(missing RESEND_API_KEY) passed`, then `All cases passed`, exit code 0.
+If any assertion fails, fix `send-welcome-email.mjs` and re-run — do not
+proceed to Step 4 until all six cases pass.
 
-- [ ] **Step 4: Add the `[functions]` block to `netlify.toml`**
+- [ ] **Step 4: Confirm `netlify.toml` already has the `[functions]` block**
 
-Current content:
-```toml
-[build]
-  publish = "website"
+```bash
+cat netlify.toml
 ```
 
-New content:
+Expected:
 ```toml
 [build]
   publish = "website"
@@ -208,6 +228,10 @@ New content:
 [functions]
   directory = "netlify/functions"
 ```
+
+This was already added by the original implementation and needs no
+change — event-triggered functions are bundled from the same directory
+as webhook-style ones. If it's missing for any reason, add it.
 
 - [ ] **Step 5: Confirm the rest of the repo's test suite still passes**
 
@@ -223,6 +247,7 @@ expected to reveal anything new).
 
 ```bash
 rm -f /tmp/verify-welcome-email.mjs
-git add netlify/functions/send-welcome-email.js netlify.toml
-git commit -m "Add wishlist welcome-email Netlify Function"
+git add netlify/ netlify.toml
+git status  # confirm this stages both the new .mjs file AND the .js deletion from Step 1
+git commit -m "Switch wishlist welcome email to an event-triggered function"
 ```
