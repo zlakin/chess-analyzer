@@ -248,9 +248,6 @@ body {
   .hero-grid {
     grid-template-columns: 1fr;
   }
-  .hero-media {
-    order: -1;
-  }
   .hero-copy h1 {
     font-size: 2rem;
   }
