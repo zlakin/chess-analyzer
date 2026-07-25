@@ -16,7 +16,7 @@
 <link rel="icon" type="image/png" href="images/icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -33,8 +33,10 @@
   <section class="hero">
     <div class="wrap hero-grid">
       <div class="hero-copy">
+        <p class="hero-eyebrow">1.e4 e5 2.f4 exf4 3.Bc4 Qh4+</p>
         <h1>The Game Review chess.com wants you to pay for — free, and it never leaves your machine.</h1>
         <p class="hero-subhead">Chess Analyzer runs a real Stockfish engine locally to grade every move, score your accuracy, and surface the patterns costing you games. No subscription, no upload.</p>
+        <p class="hero-stats">9 move-quality tiers &middot; 6 tactic types detected &middot; 0 cloud calls</p>
 
         <form name="wishlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/success.html" class="wishlist-form">
           <input type="hidden" name="form-name" value="wishlist" />
@@ -55,23 +57,35 @@
     <div class="wrap">
       <h2>What it actually does</h2>
       <div class="feature-grid">
-        <article class="feature-card">
-          <img src="images/hero.png" alt="Move-by-move engine evaluation and per-game accuracy score" loading="lazy" />
+        <article class="feature-card feature-card-analysis">
+          <div class="feature-shot">
+            <img src="images/hero.png" alt="Move-by-move engine evaluation and per-game accuracy score" loading="lazy" />
+          </div>
+          <p class="feature-tag"><span class="tag-dot"></span>Engine</p>
           <h3>Full engine analysis &amp; accuracy scoring</h3>
           <p>Every move graded against Stockfish, with a per-game accuracy score — the same idea chess.com's paid tier uses, running entirely on your machine.</p>
         </article>
-        <article class="feature-card">
-          <img src="images/feature-classify.png" alt="Move-quality classification legend: brilliant, best, good, inaccuracy, mistake, blunder" loading="lazy" />
+        <article class="feature-card feature-card-classify">
+          <div class="feature-shot">
+            <img src="images/feature-classify.png" alt="Move-quality classification legend: brilliant, best, good, inaccuracy, mistake, blunder" loading="lazy" />
+          </div>
+          <p class="feature-tag"><span class="tag-dot"></span>Classify</p>
           <h3>Move-quality classification</h3>
           <p>Brilliant, best, good, inaccuracy, mistake, blunder — see exactly where a game turned, move by move.</p>
         </article>
-        <article class="feature-card">
-          <img src="images/feature-import.png" alt="Importing games directly from a chess.com profile" loading="lazy" />
+        <article class="feature-card feature-card-import">
+          <div class="feature-shot">
+            <img src="images/feature-import.png" alt="Importing games directly from a chess.com profile" loading="lazy" />
+          </div>
+          <p class="feature-tag"><span class="tag-dot"></span>Import</p>
           <h3>Import from chess.com</h3>
           <p>Paste a PGN, upload a file, or search your chess.com username directly.</p>
         </article>
-        <article class="feature-card">
-          <img src="images/feature-insights.png" alt="Insights tab showing recurring tactical patterns and a recent-mistakes list" loading="lazy" />
+        <article class="feature-card feature-card-insights">
+          <div class="feature-shot">
+            <img src="images/feature-insights.png" alt="Insights tab showing recurring tactical patterns and a recent-mistakes list" loading="lazy" />
+          </div>
+          <p class="feature-tag"><span class="tag-dot"></span>Insights</p>
           <h3>Tactical insights</h3>
           <p>Recurring forks, pins, hung pieces — Insights tracks the patterns actually costing you rating, not just single-game noise.</p>
         </article>
