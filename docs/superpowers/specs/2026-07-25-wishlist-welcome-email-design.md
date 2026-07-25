@@ -83,7 +83,10 @@ exports.handler = async (event) => {
   try {
     submission = JSON.parse(event.body).payload
   } catch {
-    return { statusCode: 400, body: 'Invalid payload' }
+    // Malformed body - nothing to parse, nothing to send. Same 200
+    // no-op as the shape-validation branch below (see "Error handling"):
+    // there's no caller reacting to our status code either way.
+    return { statusCode: 200, body: 'Invalid payload' }
   }
 
   const email = submission?.data?.email
