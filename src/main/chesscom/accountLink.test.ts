@@ -33,7 +33,7 @@ describe('accountLink', () => {
       const result = await startLink('zlakin')
 
       expect('code' in result).toBe(true)
-      expect((result as { code: string }).code).toMatch(/^CHESSANALYZER-[0-9A-F]{8}$/)
+      expect((result as { code: string }).code).toMatch(/^STUDYROOM-[0-9A-F]{8}$/)
     })
 
     it('surfaces the error when the profile lookup fails', async () => {

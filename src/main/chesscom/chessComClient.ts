@@ -1,6 +1,6 @@
 import type { ChessComGameSummary } from '../../shared/types'
 
-const USER_AGENT = 'chess-analyzer (personal, non-commercial use)'
+const USER_AGENT = 'study-room (personal, non-commercial use)'
 
 export class ChessComFetchError extends Error {}
 

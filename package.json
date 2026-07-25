@@ -20,8 +20,8 @@
     "setup:stockfish": "node scripts/downloadStockfish.mjs"
   },
   "build": {
-    "appId": "com.chessanalyzer.app",
-    "productName": "Chess Analyzer",
+    "appId": "com.studyroom.app",
+    "productName": "Study Room",
     "files": [
       "out/**/*",
       "package.json"

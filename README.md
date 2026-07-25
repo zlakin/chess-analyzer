@@ -1,4 +1,4 @@
-# Chess Analyzer
+# Study Room
 
 A free, local desktop chess analyzer that reproduces the core of
 chess.com's paid "Game Review" feature — engine evaluation, move-quality

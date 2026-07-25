@@ -1,9 +1,9 @@
 ---
 name: run-desktop
-description: Build, run, and drive the Chess Analyzer Electron desktop app. Use when asked to start the desktop app, take a screenshot of it, or interact with its UI.
+description: Build, run, and drive the Study Room (Chess Analyzer) Electron desktop app. Use when asked to start the desktop app, take a screenshot of it, or interact with its UI.
 ---
 
-Chess Analyzer is an Electron desktop app. This dev machine has a real X11
+Study Room (Chess Analyzer) is an Electron desktop app. This dev machine has a real X11
 display (`DISPLAY=:0`, XWayland under KDE) — no xvfb needed. Drive it via
 the Playwright `_electron` batch driver at `driver.mjs` in this directory.
 

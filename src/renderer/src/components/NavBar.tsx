@@ -32,7 +32,7 @@ export function NavBar({
 
   return (
     <header className="nav-bar">
-      <span className="nav-brand">Chess Analyzer</span>
+      <span className="nav-brand">Study Room</span>
       <nav className="segmented-control">
         <button
           className={`segmented-control-option${activeTab === 'analyze' ? ' active' : ''}`}

@@ -10,7 +10,7 @@ interface PendingChallenge {
 let pendingChallenge: PendingChallenge | null = null
 
 function generateCode(): string {
-  return `CHESSANALYZER-${randomBytes(4).toString('hex').toUpperCase()}`
+  return `STUDYROOM-${randomBytes(4).toString('hex').toUpperCase()}`
 }
 
 export async function startLink(username: string): Promise<{ code: string } | { error: string }> {

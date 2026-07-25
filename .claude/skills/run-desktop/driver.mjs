@@ -1,4 +1,4 @@
-// Batch driver for Chess Analyzer (Electron). Real X11 display available (DISPLAY=:0), no xvfb needed.
+// Batch driver for Study Room (Chess Analyzer), an Electron app. Real X11 display available (DISPLAY=:0), no xvfb needed.
 // Usage: node driver.mjs commands.txt
 import { _electron as electron } from 'playwright-core'
 import * as fs from 'node:fs'
