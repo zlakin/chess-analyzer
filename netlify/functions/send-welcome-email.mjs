@@ -6,10 +6,10 @@ export default {
     const formName = data['form-name']
     const email = typeof data.email === 'string' ? data.email.trim() : ''
 
-    if (formName !== 'wishlist' || !email || email.length > 254 || !EMAIL_RE.test(email)) {
-      // Netlify only invokes this handler for submissions it already
-      // verified as non-spam - this check is just "is this our
-      // wishlist form with a plausible email," not spam filtering.
+    if ((formName !== undefined && formName !== 'wishlist') || !email || email.length > 254 || !EMAIL_RE.test(email)) {
+      // This site has exactly one form. If Netlify includes form-name in
+      // event.data, honor it; if the key is simply absent, don't let that
+      // alone suppress every send - the ambiguity is documented, not risked.
       console.log('Ignoring non-wishlist or malformed submission', { formName, hasEmail: !!email })
       return
     }
@@ -48,10 +48,12 @@ export default {
             '— Zachary',
           ].join('\n'),
         }),
+        signal: AbortSignal.timeout(10_000),
       })
 
       if (res.ok) {
-        console.log('Welcome email sent')
+        const result = await res.json().catch(() => ({}))
+        console.log('Welcome email sent', { id: result.id })
       } else {
         console.error('Resend API error', res.status, await res.text())
       }

@@ -142,12 +142,12 @@ call Resend?) and the sent body's contents instead of a status code.
 ```bash
 cat > /tmp/verify-welcome-email.mjs <<'EOF'
 import assert from 'node:assert/strict'
-import fn from '../home/zacharyl/chess/netlify/functions/send-welcome-email.mjs'
+import fn from '/home/zacharyl/chess/netlify/functions/send-welcome-email.mjs'
 
 let fetchCalls = []
 global.fetch = async (url, opts) => {
   fetchCalls.push({ url, opts })
-  return { ok: true, status: 200, text: async () => '' }
+  return { ok: true, status: 200, text: async () => '', json: async () => ({ id: 'test-message-id' }) }
 }
 
 function makeEvent(data) {
@@ -204,15 +204,24 @@ await fn.formSubmitted(makeEvent({ 'form-name': 'wishlist', email: 'person3@exam
 assert.equal(fetchCalls.length, 0)
 console.log('Case 6 (missing RESEND_API_KEY) passed')
 
+// Case 7: form-name key absent but a valid email present -> DOES call Resend
+// now (this is the Critical fix - a missing form-name must not silently
+// suppress every send, since this site has only one form anyway)
+process.env.RESEND_API_KEY = 'test-key'
+fetchCalls = []
+await fn.formSubmitted({ data: { email: 'person4@example.com' } })
+assert.equal(fetchCalls.length, 1)
+console.log('Case 7 (form-name absent, valid email) passed')
+
 console.log('All cases passed')
 EOF
 node /tmp/verify-welcome-email.mjs
 ```
 
-Expected output: `Case 1 (valid submission) passed` through `Case 6
-(missing RESEND_API_KEY) passed`, then `All cases passed`, exit code 0.
-If any assertion fails, fix `send-welcome-email.mjs` and re-run — do not
-proceed to Step 4 until all six cases pass.
+Expected output: `Case 1 (valid submission) passed` through `Case 7
+(form-name absent, valid email) passed`, then `All cases passed`, exit
+code 0. If any assertion fails, fix `send-welcome-email.mjs` and re-run —
+do not proceed to Step 4 until all seven cases pass.
 
 - [ ] **Step 4: Confirm `netlify.toml` already has the `[functions]` block**
 

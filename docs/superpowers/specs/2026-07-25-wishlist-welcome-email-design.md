@@ -186,7 +186,12 @@ skipping JWS verification (previously accepted as a deliberate tradeoff)
 is now moot: there is no public endpoint left to protect. The in-code
 `formName`/`email` check that remains is not a security boundary, just a
 "this is the form we care about" filter, kept for the same defense-in-
-depth reasons as before but at effectively zero remaining risk.
+depth reasons as before but at effectively zero remaining risk. The
+public *function* endpoint is gone, but the form itself remains a public
+submission point: a spammer could still trigger a send to an arbitrary
+address by submitting the form directly, bounded by Netlify Forms' own
+spam filtering and its monthly submission quota (not Resend's). Revisit
+if that quota gets exhausted or abused.
 
 ## Configuration (Netlify environment variables — none committed to the repo)
 
@@ -208,6 +213,19 @@ depth reasons as before but at effectively zero remaining risk.
 5. Redeploy (a fresh deploy is needed to pick up the new function and
    env vars) and submit one real test signup on the live site to
    confirm the email arrives.
+   - If no email arrives, check Site -> Functions -> send-welcome-email
+     in the Netlify dashboard. A log line reading `Ignoring non-wishlist
+     or malformed submission { formName: undefined, hasEmail: true }`
+     would have meant the form-name key was absent - but this is now
+     handled gracefully per the Critical fix above, so this specific
+     failure mode is closed. If you still see it after applying that
+     fix, it means the email itself failed validation - check what
+     value is actually in `event.data.email`.
+   - As a sanity check that the security model is real:
+     `curl -i https://<your-site>/.netlify/functions/send-welcome-email`
+     should NOT successfully trigger a send (no public HTTP route exists
+     for this function - it only has an event handler, no `fetch`
+     handler).
 
 (No dashboard Forms-notification step, unlike the original design — the
 event-triggered function wires itself up automatically once deployed.)
