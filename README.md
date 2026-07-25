@@ -32,3 +32,10 @@ npm run dev                # launches the Electron app
 
 `npm test` runs the Vitest suite; `npm run typecheck` runs `tsc -b` across
 the project references.
+
+## Website
+
+A static marketing/wishlist site lives in `website/` (deployed via Netlify,
+config at the repo-root `netlify.toml`) — see
+[`docs/superpowers/specs/2026-07-25-marketing-website-design.md`](docs/superpowers/specs/2026-07-25-marketing-website-design.md)
+for the design.

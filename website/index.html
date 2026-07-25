@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Chess Analyzer — Free, Local Game Review</title>
 <meta name="description" content="Chess Analyzer runs a real Stockfish engine locally to grade every move, score your accuracy, and surface the patterns costing you games. No subscription, no upload." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Chess Analyzer — Free, Local Game Review" />
+<meta property="og:description" content="Chess Analyzer runs a real Stockfish engine locally to grade every move, score your accuracy, and surface the patterns costing you games. No subscription, no upload." />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Chess Analyzer — Free, Local Game Review" />
+<meta name="twitter:description" content="Chess Analyzer runs a real Stockfish engine locally to grade every move, score your accuracy, and surface the patterns costing you games. No subscription, no upload." />
+<!-- og:image intentionally omitted: needs an absolute URL, add it after the first Netlify deploy once the site's real URL is known -->
+<link rel="icon" type="image/svg+xml" href="images/icon.svg" />
 <link rel="icon" type="image/png" href="images/icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,7 +23,7 @@
 <header class="site-header">
   <div class="wrap">
     <a class="wordmark" href="/">
-      <img src="images/icon.png" alt="" class="wordmark-icon" width="28" height="28" />
+      <img src="images/icon.svg" alt="" class="wordmark-icon" width="28" height="28" />
       Chess Analyzer
     </a>
   </div>
@@ -30,7 +38,7 @@
 
         <form name="wishlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/success.html" class="wishlist-form">
           <input type="hidden" name="form-name" value="wishlist" />
-          <p class="hp-field"><label>Don't fill this out: <input name="bot-field" /></label></p>
+          <p class="hp-field" aria-hidden="true"><label>Don't fill this out: <input name="bot-field" tabindex="-1" autocomplete="off" /></label></p>
           <label class="visually-hidden" for="email">Email address</label>
           <input type="email" id="email" name="email" required placeholder="you@example.com" />
           <button type="submit" class="button-primary">Join the wishlist</button>
@@ -38,7 +46,7 @@
         <p class="hero-note">In active development — a Linux build already exists today; Windows and Mac are next. I'll email you the moment there's a build for your platform.</p>
       </div>
       <div class="hero-media">
-        <img src="images/hero.png" alt="Chess Analyzer showing a fully analyzed game: board, evaluation bar, move list, and evaluation graph" loading="eager" />
+        <img src="images/hero.png" alt="Chess Analyzer showing a fully analyzed game: board, evaluation bar, move list, and evaluation graph" loading="eager" width="1280" height="772" />
       </div>
     </div>
   </section>
@@ -48,22 +56,22 @@
       <h2>What it actually does</h2>
       <div class="feature-grid">
         <article class="feature-card">
-          <img src="images/hero.png" alt="Move-by-move engine evaluation and per-game accuracy score" />
+          <img src="images/hero.png" alt="Move-by-move engine evaluation and per-game accuracy score" loading="lazy" />
           <h3>Full engine analysis &amp; accuracy scoring</h3>
           <p>Every move graded against Stockfish, with a per-game accuracy score — the same idea chess.com's paid tier uses, running entirely on your machine.</p>
         </article>
         <article class="feature-card">
-          <img src="images/feature-classify.png" alt="Move-quality classification legend: brilliant, best, good, inaccuracy, mistake, blunder" />
+          <img src="images/feature-classify.png" alt="Move-quality classification legend: brilliant, best, good, inaccuracy, mistake, blunder" loading="lazy" />
           <h3>Move-quality classification</h3>
           <p>Brilliant, best, good, inaccuracy, mistake, blunder — see exactly where a game turned, move by move.</p>
         </article>
         <article class="feature-card">
-          <img src="images/feature-import.png" alt="Importing games directly from a chess.com profile" />
+          <img src="images/feature-import.png" alt="Importing games directly from a chess.com profile" loading="lazy" />
           <h3>Import from chess.com</h3>
           <p>Paste a PGN, upload a file, or search your chess.com username directly.</p>
         </article>
         <article class="feature-card">
-          <img src="images/feature-insights.png" alt="Insights tab showing recurring tactical patterns and a recent-mistakes list" />
+          <img src="images/feature-insights.png" alt="Insights tab showing recurring tactical patterns and a recent-mistakes list" loading="lazy" />
           <h3>Tactical insights</h3>
           <p>Recurring forks, pins, hung pieces — Insights tracks the patterns actually costing you rating, not just single-game noise.</p>
         </article>
@@ -83,7 +91,7 @@
       <h2>Want in?</h2>
       <form name="wishlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/success.html" class="wishlist-form">
         <input type="hidden" name="form-name" value="wishlist" />
-        <p class="hp-field"><label>Don't fill this out: <input name="bot-field" /></label></p>
+        <p class="hp-field" aria-hidden="true"><label>Don't fill this out: <input name="bot-field" tabindex="-1" autocomplete="off" /></label></p>
         <label class="visually-hidden" for="email-2">Email address</label>
         <input type="email" id="email-2" name="email" required placeholder="you@example.com" />
         <button type="submit" class="button-primary">Join the wishlist</button>
