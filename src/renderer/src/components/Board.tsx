@@ -17,6 +17,7 @@ interface BoardProps {
   boardOrientation: 'white' | 'black'
   onMove: (from: string, to: string) => boolean
   onHeightChange?: (height: number) => void
+  hintSquare?: string | null
 }
 
 export const Board = memo(function Board({
@@ -25,7 +26,8 @@ export const Board = memo(function Board({
   currentMove,
   boardOrientation,
   onMove,
-  onHeightChange
+  onHeightChange,
+  hintSquare = null
 }: BoardProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
@@ -66,12 +68,26 @@ export const Board = memo(function Board({
   const badgeSquare = currentMove ? currentMove.moveUci.slice(2, 4) : null
   const badgeStyle = currentMove ? MOVE_CLASSIFICATION_STYLE[currentMove.classification] : null
 
+  const squareStyles = useMemo(() => {
+    const styles: Record<string, { boxShadow: string }> = {}
+    if (hintSquare) styles[hintSquare] = { boxShadow: 'inset 0 0 0 3px var(--mq-inaccuracy)' }
+    if (selectedSquare) styles[selectedSquare] = { boxShadow: 'inset 0 0 0 3px var(--accent)' }
+    return styles
+  }, [hintSquare, selectedSquare])
+
   const squareRenderer: SquareRenderer = useMemo(() => {
     return ({ square, children }) => {
       const showBadge = badgeSquare !== null && badgeStyle !== null && square === badgeSquare
       const BadgeIcon = badgeStyle?.icon
       return (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        // react-chessboard (5.10.0) only ever applies its own `squareStyles`
+        // option inside the `squareRenderer?.(...) || <div>` fallback branch
+        // of its internal Square component - since squareRenderer is always
+        // provided here and always returns a truthy element, that fallback
+        // is dead code and `squareStyles` passed to <Chessboard> below is
+        // silently a no-op. Spreading it into this wrapper's own style is
+        // what actually makes the hint/selection highlight visible.
+        <div style={{ position: 'relative', width: '100%', height: '100%', ...squareStyles[square] }}>
           {children}
           {showBadge && badgeStyle && BadgeIcon && (
             <span
@@ -85,12 +101,7 @@ export const Board = memo(function Board({
         </div>
       )
     }
-  }, [badgeSquare, badgeStyle])
-
-  const squareStyles = useMemo(
-    () => (selectedSquare ? { [selectedSquare]: { boxShadow: 'inset 0 0 0 3px var(--accent)' } } : {}),
-    [selectedSquare]
-  )
+  }, [badgeSquare, badgeStyle, squareStyles])
 
   function handlePieceDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
     if (!targetSquare) return false

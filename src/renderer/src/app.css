@@ -568,6 +568,41 @@ textarea:focus {
   color: var(--mq-blunder);
 }
 
+.puzzle-stats-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.puzzle-stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  padding: 0.5rem 1rem;
+  min-width: 5.5rem;
+}
+
+.puzzle-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--text);
+}
+
+.puzzle-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.puzzle-hint-controls {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
 .insights-report {
   display: flex;
   flex-direction: column;

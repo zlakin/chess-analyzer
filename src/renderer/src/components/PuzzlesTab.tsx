@@ -21,9 +21,22 @@ interface TaggedResult {
 }
 
 export function PuzzlesTab(): JSX.Element {
-  const { queue, nextDueAt, currentCard, attempt, next, isLoading } = usePuzzleSession()
+  const {
+    queue,
+    nextDueAt,
+    currentCard,
+    sessionTotal,
+    stats,
+    hintUsed,
+    attempt,
+    requestHint,
+    giveUp,
+    next,
+    isLoading
+  } = usePuzzleSession()
   const [taggedAttempt, setTaggedAttempt] = useState<TaggedAttempt | null>(null)
   const [taggedResult, setTaggedResult] = useState<TaggedResult | null>(null)
+  const [taggedGaveUp, setTaggedGaveUp] = useState<string | null>(null)
   const [isGrading, setIsGrading] = useState(false)
 
   // Tagging each value with the cardId it belongs to, and only ever
@@ -34,6 +47,7 @@ export function PuzzlesTab(): JSX.Element {
     taggedAttempt && taggedAttempt.cardId === currentCard?.cardId ? taggedAttempt.fen : null
   const result =
     taggedResult && taggedResult.cardId === currentCard?.cardId ? taggedResult.result : null
+  const gaveUp = taggedGaveUp === currentCard?.cardId
 
   if (isLoading) return <div className="puzzles-tab" />
 
@@ -49,8 +63,17 @@ export function PuzzlesTab(): JSX.Element {
     )
   }
 
+  const isCorrect = result !== null && 'correct' in result && result.correct
+  const resolved = isCorrect || gaveUp
+  const hintSquare = hintUsed && !resolved ? currentCard.bestMoveUci.slice(0, 2) : null
+  const position = sessionTotal - queue.length + 1
+  const accuracyLabel =
+    stats && stats.totalResolved > 0
+      ? `${Math.round((stats.totalCleanSolves / stats.totalResolved) * 100)}%`
+      : '—'
+
   const handleMove = (from: string, to: string): boolean => {
-    if (result !== null) return false // already graded this card, waiting on Retry/Next
+    if (result !== null || gaveUp) return false // already resolved or waiting on Retry
 
     const fenAfterAttempt = tryMove(currentCard.fenBefore, from, to)
     if (!fenAfterAttempt) return false
@@ -69,11 +92,36 @@ export function PuzzlesTab(): JSX.Element {
     setTaggedResult(null)
   }
 
+  const handleGiveUp = (): void => {
+    giveUp()
+    setTaggedGaveUp(currentCard.cardId)
+  }
+
   const tags = tacticTags(currentCard.missedTactics, currentCard.punishedByTactics)
-  const graded = result !== null && 'correct' in result
 
   return (
     <div className="puzzles-tab">
+      {stats && (
+        <div className="puzzle-stats-bar">
+          <div className="puzzle-stat-tile">
+            <span className="puzzle-stat-value">{stats.rating}</span>
+            <span className="puzzle-stat-label">Rating</span>
+          </div>
+          <div className="puzzle-stat-tile">
+            <span className="puzzle-stat-value">{stats.currentStreak}</span>
+            <span className="puzzle-stat-label">Streak</span>
+          </div>
+          <div className="puzzle-stat-tile">
+            <span className="puzzle-stat-value">{stats.solvedToday}</span>
+            <span className="puzzle-stat-label">Solved today</span>
+          </div>
+          <div className="puzzle-stat-tile">
+            <span className="puzzle-stat-value">{accuracyLabel}</span>
+            <span className="puzzle-stat-label">Accuracy</span>
+          </div>
+        </div>
+      )}
+      <p className="puzzle-status-panel">{`Puzzle ${position} of ${sessionTotal}`}</p>
       <div className="analysis-layout">
         <div className="board-column">
           <Board
@@ -83,10 +131,11 @@ export function PuzzlesTab(): JSX.Element {
             // than wherever the attempt ended up, so the reveal arrow
             // below is only ever correct against fenBefore.
             fen={result === null && attemptFen !== null ? attemptFen : currentCard.fenBefore}
-            bestMoveUci={graded ? currentCard.bestMoveUci : null}
+            bestMoveUci={resolved ? currentCard.bestMoveUci : null}
             currentMove={null}
             boardOrientation={currentCard.userColor === 'w' ? 'white' : 'black'}
             onMove={handleMove}
+            hintSquare={hintSquare}
           />
           {result !== null && 'error' in result && (
             <div className="puzzle-feedback puzzle-feedback-incorrect">
@@ -94,25 +143,45 @@ export function PuzzlesTab(): JSX.Element {
               <button className="button-secondary" onClick={handleRetry}>
                 Retry
               </button>
-              <button className="button-secondary" onClick={next}>
+            </div>
+          )}
+          {result !== null && 'correct' in result && !result.correct && (
+            <div className="puzzle-feedback puzzle-feedback-incorrect">
+              <span>Not quite — try again.</span>
+              <button className="button-secondary" onClick={handleRetry}>
+                Retry
+              </button>
+            </div>
+          )}
+          {result !== null && 'correct' in result && result.correct && (
+            <div className="puzzle-feedback puzzle-feedback-correct">
+              <span>Correct!</span>
+              <button className="button-primary" onClick={next}>
                 Next
               </button>
             </div>
           )}
-          {graded && result !== null && 'correct' in result && (
-            <div className={`puzzle-feedback ${result.correct ? 'puzzle-feedback-correct' : 'puzzle-feedback-incorrect'}`}>
-              <span>{result.correct ? 'Correct!' : 'Not quite.'}</span>
-              <button className="button-secondary" onClick={next}>
+          {gaveUp && (
+            <div className="puzzle-feedback puzzle-feedback-incorrect">
+              <span>Here's the move you missed.</span>
+              <button className="button-primary" onClick={next}>
                 Next
+              </button>
+            </div>
+          )}
+          {!resolved && (
+            <div className="puzzle-hint-controls">
+              <button className="button-secondary" onClick={requestHint} disabled={isGrading || hintUsed}>
+                {hintUsed ? 'Hint used' : 'Hint'}
+              </button>
+              <button className="button-secondary" onClick={handleGiveUp} disabled={isGrading || !hintUsed}>
+                Can't solve
               </button>
             </div>
           )}
           {isGrading && <p className="puzzle-status-panel">Grading…</p>}
         </div>
         <div className="side-panel">
-          <p className="puzzle-status-panel">
-            {queue.length} puzzle{queue.length === 1 ? '' : 's'} due
-          </p>
           {tags.length > 0 && (
             <div className="tactic-chip-row">
               {tags.map((tag) => (
