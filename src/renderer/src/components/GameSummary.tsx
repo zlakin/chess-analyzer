@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { AnalyzedMove, MoveClassification } from '../../../shared/types'
 import { MOVE_CLASSIFICATION_STYLE } from '../lib/moveClassificationStyle'
@@ -49,7 +50,7 @@ function countByClassification(
   return counts
 }
 
-export function GameSummary({
+export const GameSummary = memo(function GameSummary({
   moves,
   whiteAccuracy,
   blackAccuracy,
@@ -108,4 +109,4 @@ export function GameSummary({
       </ul>
     </div>
   )
-}
+})

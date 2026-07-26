@@ -1,9 +1,14 @@
+import { memo } from 'react'
+
 interface EvalBarProps {
   whiteWinPercent: number
   displayScore: string
 }
 
-export function EvalBar({ whiteWinPercent, displayScore }: EvalBarProps): JSX.Element {
+export const EvalBar = memo(function EvalBar({
+  whiteWinPercent,
+  displayScore
+}: EvalBarProps): JSX.Element {
   return (
     <div className="eval-bar">
       <div className="eval-bar-black" style={{ height: `${100 - whiteWinPercent}%` }} />
@@ -11,4 +16,4 @@ export function EvalBar({ whiteWinPercent, displayScore }: EvalBarProps): JSX.El
       <span className="eval-bar-score">{displayScore}</span>
     </div>
   )
-}
+})

@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import type { AnalyzedMove } from '../../../shared/types'
 import { MOVE_CLASSIFICATION_STYLE } from '../lib/moveClassificationStyle'
 
@@ -13,21 +14,23 @@ interface MoveRow {
   black?: AnalyzedMove
 }
 
-function MoveButton({
+const MoveButton = memo(function MoveButton({
   move,
+  ply,
   isSelected,
-  onSelect
+  onSelectPly
 }: {
   move: AnalyzedMove
+  ply: number
   isSelected: boolean
-  onSelect: () => void
+  onSelectPly: (ply: number) => void
 }): JSX.Element {
   const style = MOVE_CLASSIFICATION_STYLE[move.classification]
   const Icon = style.icon
   return (
     <button
       className={`move ${move.classification}${isSelected ? ' selected' : ''}`}
-      onClick={onSelect}
+      onClick={() => onSelectPly(ply)}
       title={style.label}
     >
       <Icon size={12} className="move-icon" style={{ color: style.color }} />
@@ -36,16 +39,27 @@ function MoveButton({
       </span>
     </button>
   )
-}
+})
 
-export function MoveList({ moves, currentPly, onSelectPly }: MoveListProps): JSX.Element {
-  const rows: MoveRow[] = []
-  for (const move of moves) {
-    const row = rows[move.moveNumber - 1] ?? { moveNumber: move.moveNumber }
-    if (move.color === 'w') row.white = move
-    else row.black = move
-    rows[move.moveNumber - 1] = row
-  }
+export const MoveList = memo(function MoveList({
+  moves,
+  currentPly,
+  onSelectPly
+}: MoveListProps): JSX.Element {
+  // Grouping into rows depends only on `moves`, never on `currentPly` - so a
+  // pure ply-navigation render (the common case) reuses the same row
+  // structure instead of rebuilding it, same principle as memoizing the
+  // MoveButton children below.
+  const rows: MoveRow[] = useMemo(() => {
+    const result: MoveRow[] = []
+    for (const move of moves) {
+      const row = result[move.moveNumber - 1] ?? { moveNumber: move.moveNumber }
+      if (move.color === 'w') row.white = move
+      else row.black = move
+      result[move.moveNumber - 1] = row
+    }
+    return result
+  }, [moves])
 
   return (
     <ol className="move-list">
@@ -55,19 +69,21 @@ export function MoveList({ moves, currentPly, onSelectPly }: MoveListProps): JSX
           {row.white && (
             <MoveButton
               move={row.white}
+              ply={row.white.ply}
               isSelected={row.white.ply === currentPly}
-              onSelect={() => onSelectPly(row.white!.ply)}
+              onSelectPly={onSelectPly}
             />
           )}
           {row.black && (
             <MoveButton
               move={row.black}
+              ply={row.black.ply}
               isSelected={row.black.ply === currentPly}
-              onSelect={() => onSelectPly(row.black!.ply)}
+              onSelectPly={onSelectPly}
             />
           )}
         </li>
       ))}
     </ol>
   )
-}
+})

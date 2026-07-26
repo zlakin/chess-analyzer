@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import type { AnalyzedMove } from '../../../shared/types'
 import { whiteWinPercent } from '../lib/displayEval'
@@ -8,11 +9,19 @@ interface EvalGraphProps {
   onSelectPly: (ply: number) => void
 }
 
-export function EvalGraph({ moves, currentPly, onSelectPly }: EvalGraphProps): JSX.Element {
-  const data = moves.map((move) => ({
-    ply: move.ply,
-    whiteWinPercent: whiteWinPercent(move.evalAfter, move.color === 'w' ? 'b' : 'w')
-  }))
+export const EvalGraph = memo(function EvalGraph({
+  moves,
+  currentPly,
+  onSelectPly
+}: EvalGraphProps): JSX.Element {
+  const data = useMemo(
+    () =>
+      moves.map((move) => ({
+        ply: move.ply,
+        whiteWinPercent: whiteWinPercent(move.evalAfter, move.color === 'w' ? 'b' : 'w')
+      })),
+    [moves]
+  )
 
   return (
     <div className="eval-graph">
@@ -46,4 +55,4 @@ export function EvalGraph({ moves, currentPly, onSelectPly }: EvalGraphProps): J
       </ResponsiveContainer>
     </div>
   )
-}
+})

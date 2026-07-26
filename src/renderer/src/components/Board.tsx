@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { Chessboard } from 'react-chessboard'
 import type { Arrow, SquareRenderer } from 'react-chessboard'
 import type { AnalyzedMove } from '../../../shared/types'
@@ -10,16 +10,24 @@ interface BoardProps {
   currentMove: AnalyzedMove | null
 }
 
-export function Board({ fen, bestMoveUci, currentMove }: BoardProps): JSX.Element {
-  const arrows: Arrow[] = bestMoveUci
-    ? [
-        {
-          startSquare: bestMoveUci.slice(0, 2),
-          endSquare: bestMoveUci.slice(2, 4),
-          color: 'var(--accent)'
-        }
-      ]
-    : []
+export const Board = memo(function Board({
+  fen,
+  bestMoveUci,
+  currentMove
+}: BoardProps): JSX.Element {
+  const arrows: Arrow[] = useMemo(
+    () =>
+      bestMoveUci
+        ? [
+            {
+              startSquare: bestMoveUci.slice(0, 2),
+              endSquare: bestMoveUci.slice(2, 4),
+              color: 'var(--accent)'
+            }
+          ]
+        : [],
+    [bestMoveUci]
+  )
 
   const badgeSquare = currentMove ? currentMove.moveUci.slice(2, 4) : null
   const badgeStyle = currentMove ? MOVE_CLASSIFICATION_STYLE[currentMove.classification] : null
@@ -58,4 +66,4 @@ export function Board({ fen, bestMoveUci, currentMove }: BoardProps): JSX.Elemen
       />
     </div>
   )
-}
+})
