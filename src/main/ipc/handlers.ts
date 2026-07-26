@@ -15,6 +15,10 @@ import { runScan } from '../insights/scanRunner'
 import { ensureSchemaVersion, loadAllGameRecords, loadScanMeta } from '../insights/insightsStore'
 import { buildInsightsReport } from '../insights/reportAggregator'
 import { synthesizeTopFindings } from '../insights/topFindings'
+import { loadSrsState, saveSrsState } from '../srs/srsStore'
+import { newCardState, nextCardState } from '../srs/sm2'
+import { buildPuzzleQueue } from '../srs/puzzleQueue'
+import type { SrsQuality } from '../../shared/types'
 
 const ANALYSIS_DEPTH_DEFAULT = 18
 
@@ -166,4 +170,23 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     const partialReport = buildInsightsReport(records, meta.lastScanTime)
     return { ...partialReport, topFindings: synthesizeTopFindings(partialReport) }
   })
+
+  ipcMain.handle(IPC_CHANNELS.getPuzzleQueue, async () => {
+    ensureSchemaVersion()
+    const records = loadAllGameRecords()
+    const srsState = loadSrsState()
+    return buildPuzzleQueue(records, srsState, Date.now())
+  })
+
+  ipcMain.handle(
+    IPC_CHANNELS.submitPuzzleReview,
+    async (_event, cardId: string, quality: SrsQuality) => {
+      const now = Date.now()
+      const srsState = loadSrsState()
+      const current = srsState[cardId] ?? newCardState(cardId, now)
+      const updated = nextCardState(current, quality, now)
+      saveSrsState({ ...srsState, [cardId]: updated })
+      return updated
+    }
+  )
 }

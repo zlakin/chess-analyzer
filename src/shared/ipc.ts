@@ -15,5 +15,7 @@ export const IPC_CHANNELS = {
   scanChessComGames: 'insights:scan',
   scanProgress: 'insights:scan-progress',
   cancelScan: 'insights:cancel-scan',
-  getInsightsReport: 'insights:get-report'
+  getInsightsReport: 'insights:get-report',
+  getPuzzleQueue: 'puzzles:get-queue',
+  submitPuzzleReview: 'puzzles:submit-review'
 } as const

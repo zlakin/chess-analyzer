@@ -108,6 +108,8 @@ export interface ChessAPI {
   onScanProgress(callback: (progress: ScanProgress) => void): () => void
   cancelScan(): void
   getInsightsReport(): Promise<InsightsReport>
+  getPuzzleQueue(): Promise<PuzzleQueue>
+  submitPuzzleReview(cardId: string, quality: SrsQuality): Promise<SrsCardState>
 }
 
 export type TimeControlCategory = 'bullet' | 'blitz' | 'rapid' | 'daily'
@@ -239,4 +241,25 @@ export interface SrsCardState {
   repetitions: number
   dueDate: number
   lastReviewedAt: number | null
+}
+
+export interface PuzzleCard {
+  cardId: string
+  gameUrl: string
+  ply: number
+  fenBefore: string
+  playedMoveUci: string
+  bestMoveUci: string
+  missedTactics: TacticType[]
+  punishedByTactics: TacticType[]
+  classification: 'mistake' | 'blunder'
+  phase: GamePhase
+  opponentUsername: string
+  endTime: number
+  userColor: 'w' | 'b'
+}
+
+export interface PuzzleQueue {
+  due: PuzzleCard[]
+  nextDueAt: number | null
 }

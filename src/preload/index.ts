@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc'
-import type { AnalyzedPosition, AnalyzedMove, ChessAPI, ScanProgress, Theme } from '../shared/types'
+import type {
+  AnalyzedPosition,
+  AnalyzedMove,
+  ChessAPI,
+  ScanProgress,
+  Theme,
+  SrsQuality
+} from '../shared/types'
 
 const chessAPI: ChessAPI = {
   analyzeGame: (positions: AnalyzedPosition[], depth: number) =>
@@ -28,7 +35,10 @@ const chessAPI: ChessAPI = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.scanProgress, handler)
   },
   cancelScan: () => ipcRenderer.send(IPC_CHANNELS.cancelScan),
-  getInsightsReport: () => ipcRenderer.invoke(IPC_CHANNELS.getInsightsReport)
+  getInsightsReport: () => ipcRenderer.invoke(IPC_CHANNELS.getInsightsReport),
+  getPuzzleQueue: () => ipcRenderer.invoke(IPC_CHANNELS.getPuzzleQueue),
+  submitPuzzleReview: (cardId: string, quality: SrsQuality) =>
+    ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleReview, cardId, quality)
 }
 
 contextBridge.exposeInMainWorld('chessAPI', chessAPI)
