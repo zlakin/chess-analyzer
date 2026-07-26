@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { PuzzleAttemptResult } from '../hooks/usePuzzleSession'
 import { usePuzzleSession } from '../hooks/usePuzzleSession'
 import { tryMove } from '../lib/tryMove'
@@ -10,20 +10,30 @@ function tacticTags(missed: TacticType[], punished: TacticType[]): TacticType[] 
   return Array.from(new Set([...missed, ...punished]))
 }
 
+interface TaggedAttempt {
+  cardId: string
+  fen: string
+}
+
+interface TaggedResult {
+  cardId: string
+  result: PuzzleAttemptResult | { error: string }
+}
+
 export function PuzzlesTab(): JSX.Element {
   const { queue, nextDueAt, currentCard, attempt, next, isLoading } = usePuzzleSession()
-  const [attemptFen, setAttemptFen] = useState<string | null>(null)
-  const [result, setResult] = useState<PuzzleAttemptResult | { error: string } | null>(null)
+  const [taggedAttempt, setTaggedAttempt] = useState<TaggedAttempt | null>(null)
+  const [taggedResult, setTaggedResult] = useState<TaggedResult | null>(null)
   const [isGrading, setIsGrading] = useState(false)
 
-  // A new card (via next(), or the very first card loading in) starts
-  // clean - any leftover attempt/result/grading state described a
-  // *previous* card and would otherwise leak into this one.
-  useEffect(() => {
-    setAttemptFen(null)
-    setResult(null)
-    setIsGrading(false)
-  }, [currentCard?.cardId])
+  // Tagging each value with the cardId it belongs to, and only ever
+  // reading it back when that tag matches the *current* card, means a
+  // stale attempt/result from a just-abandoned card can never render -
+  // structurally, not just via a same-tick effect racing the paint.
+  const attemptFen =
+    taggedAttempt && taggedAttempt.cardId === currentCard?.cardId ? taggedAttempt.fen : null
+  const result =
+    taggedResult && taggedResult.cardId === currentCard?.cardId ? taggedResult.result : null
 
   if (isLoading) return <div className="puzzles-tab" />
 
@@ -40,40 +50,56 @@ export function PuzzlesTab(): JSX.Element {
   }
 
   const handleMove = (from: string, to: string): boolean => {
-    if (result !== null) return false // already graded this card, waiting on Next
+    if (result !== null) return false // already graded this card, waiting on Retry/Next
 
     const fenAfterAttempt = tryMove(currentCard.fenBefore, from, to)
     if (!fenAfterAttempt) return false
 
-    setAttemptFen(fenAfterAttempt)
+    setTaggedAttempt({ cardId: currentCard.cardId, fen: fenAfterAttempt })
     setIsGrading(true)
-    // attempt() re-derives the same resulting FEN internally (it needs to
-    // evaluate that position, not just know it) - recomputing tryMove
-    // there is cheap and keeps the hook self-contained rather than
-    // threading this component's already-computed FEN through its
-    // signature.
     void attempt(from, to).then((r) => {
       setIsGrading(false)
-      setResult(r)
+      setTaggedResult({ cardId: currentCard.cardId, result: r })
     })
     return true
   }
 
+  const handleRetry = (): void => {
+    setTaggedAttempt(null)
+    setTaggedResult(null)
+  }
+
   const tags = tacticTags(currentCard.missedTactics, currentCard.punishedByTactics)
+  const graded = result !== null && 'correct' in result
 
   return (
     <div className="puzzles-tab">
       <div className="analysis-layout">
         <div className="board-column">
           <Board
-            fen={attemptFen ?? currentCard.fenBefore}
-            bestMoveUci={result !== null && 'correct' in result ? currentCard.bestMoveUci : null}
+            // While grading (or ungraded), show wherever the attempt
+            // landed. Once a verdict exists, revert to fenBefore -
+            // bestMoveUci describes a move IN fenBefore, one ply earlier
+            // than wherever the attempt ended up, so the reveal arrow
+            // below is only ever correct against fenBefore.
+            fen={result === null && attemptFen !== null ? attemptFen : currentCard.fenBefore}
+            bestMoveUci={graded ? currentCard.bestMoveUci : null}
             currentMove={null}
             boardOrientation={currentCard.userColor === 'w' ? 'white' : 'black'}
             onMove={handleMove}
           />
-          {result !== null && 'error' in result && <div className="import-error">{result.error}</div>}
-          {result !== null && 'correct' in result && (
+          {result !== null && 'error' in result && (
+            <div className="puzzle-feedback puzzle-feedback-incorrect">
+              <span>{result.error}</span>
+              <button className="button-secondary" onClick={handleRetry}>
+                Retry
+              </button>
+              <button className="button-secondary" onClick={next}>
+                Next
+              </button>
+            </div>
+          )}
+          {graded && result !== null && 'correct' in result && (
             <div className={`puzzle-feedback ${result.correct ? 'puzzle-feedback-correct' : 'puzzle-feedback-incorrect'}`}>
               <span>{result.correct ? 'Correct!' : 'Not quite.'}</span>
               <button className="button-secondary" onClick={next}>

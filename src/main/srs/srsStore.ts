@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import type { SrsCardState } from '../../shared/types'
 
@@ -21,5 +21,7 @@ export function loadSrsState(): Record<string, SrsCardState> {
 export function saveSrsState(state: Record<string, SrsCardState>): void {
   const path = srsStatePath()
   mkdirSync(app.getPath('userData'), { recursive: true })
-  writeFileSync(path, JSON.stringify(state, null, 2), 'utf-8')
+  const tmpPath = `${path}.tmp`
+  writeFileSync(tmpPath, JSON.stringify(state, null, 2), 'utf-8')
+  renameSync(tmpPath, path)
 }
