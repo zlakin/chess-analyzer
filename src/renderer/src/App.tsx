@@ -18,6 +18,8 @@ import { parsePgn, PgnParseError } from '../../shared/pgn'
 import { getPositionAtPly, getMoveAtPly } from './lib/gameNavigation'
 import { formatScore, whiteWinPercent } from './lib/displayEval'
 import { MoveDetail } from './components/MoveDetail'
+import { useVariationExplorer } from './hooks/useVariationExplorer'
+import { ExploringBanner } from './components/ExploringBanner'
 
 interface Players {
   white: string
@@ -69,6 +71,8 @@ function App(): JSX.Element {
 
   const position = useMemo(() => getPositionAtPly(state.moves, currentPly), [state.moves, currentPly])
   const currentMove = useMemo(() => getMoveAtPly(state.moves, currentPly), [state.moves, currentPly])
+  const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white')
+  const explorer = useVariationExplorer(position.fen)
 
   const handleNewGame = (): void => {
     reset()
@@ -87,6 +91,7 @@ function App(): JSX.Element {
       else if (e.key === 'ArrowRight') goToPly(currentPly + 1)
       else if (e.key === 'Home') goToPly(0)
       else if (e.key === 'End') goToPly(state.moves.length)
+      else if (e.key === 'f' || e.key === 'F') setBoardOrientation((o) => (o === 'white' ? 'black' : 'white'))
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
@@ -148,18 +153,32 @@ function App(): JSX.Element {
               <div className="analysis-layout">
                 <EvalBar
                   whiteWinPercent={
-                    position.evaluation ? whiteWinPercent(position.evaluation, position.sideToMove) : 50
+                    explorer.isExploring
+                      ? explorer.evaluation
+                        ? whiteWinPercent(explorer.evaluation, explorer.sideToMove)
+                        : 50
+                      : position.evaluation
+                        ? whiteWinPercent(position.evaluation, position.sideToMove)
+                        : 50
                   }
                   displayScore={
-                    position.evaluation ? formatScore(position.evaluation, position.sideToMove) : '0.00'
+                    explorer.isExploring
+                      ? explorer.evaluation
+                        ? formatScore(explorer.evaluation, explorer.sideToMove)
+                        : '...'
+                      : position.evaluation
+                        ? formatScore(position.evaluation, position.sideToMove)
+                        : '0.00'
                   }
                   height={boardHeight}
                 />
                 <div className="board-column">
                   <Board
-                    fen={position.fen}
-                    bestMoveUci={position.bestMoveUci}
-                    currentMove={currentMove}
+                    fen={explorer.currentFen}
+                    bestMoveUci={explorer.isExploring ? null : position.bestMoveUci}
+                    currentMove={explorer.isExploring ? null : currentMove}
+                    boardOrientation={boardOrientation}
+                    onMove={explorer.makeMove}
                     onHeightChange={handleBoardHeightChange}
                   />
                   <div className="board-nav">
@@ -188,7 +207,18 @@ function App(): JSX.Element {
                       <ChevronsRight size={18} />
                     </button>
                   </div>
-                  <MoveDetail move={currentMove} />
+                  {explorer.isExploring ? (
+                    <ExploringBanner
+                      evaluation={explorer.evaluation}
+                      isEvaluating={explorer.isEvaluating}
+                      sideToMove={explorer.sideToMove}
+                      canUndo={true}
+                      onUndo={explorer.undoLastMove}
+                      onExit={explorer.exitExploration}
+                    />
+                  ) : (
+                    <MoveDetail move={currentMove} />
+                  )}
                 </div>
                 <div className="side-panel">
                   <MoveList moves={state.moves} currentPly={currentPly} onSelectPly={setCurrentPly} />
