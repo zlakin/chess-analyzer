@@ -521,6 +521,53 @@ textarea:focus {
   font-size: 1rem;
 }
 
+.puzzles-tab {
+  padding: 1.5rem;
+}
+
+/* .analysis-layout (reused from the Analyze tab) is a 3-column grid sized
+   for EvalBar + board-column + side-panel. PuzzlesTab has no eval bar, so
+   with only 2 children grid auto-placement drops board-column into the
+   narrow ~44px column meant for the eval bar and stretches side-panel
+   into the board's column - this override restores a 2-column layout
+   sized for board-column + side-panel only. */
+.puzzles-tab .analysis-layout {
+  grid-template-columns: minmax(280px, 1fr) minmax(280px, 380px);
+}
+
+.puzzle-empty-message {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.puzzle-status-panel {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.puzzle-feedback {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.puzzle-feedback-correct {
+  border-color: var(--mq-best);
+  color: var(--mq-best);
+}
+
+.puzzle-feedback-incorrect {
+  border-color: var(--mq-blunder);
+  color: var(--mq-blunder);
+}
+
 .insights-report {
   display: flex;
   flex-direction: column;

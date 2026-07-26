@@ -3,6 +3,7 @@ import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-r
 import { NavBar } from './components/NavBar'
 import type { AppTab } from './components/NavBar'
 import { InsightsTab } from './components/InsightsTab'
+import { PuzzlesTab } from './components/PuzzlesTab'
 import { ImportModal } from './components/ImportModal'
 import { Board } from './components/Board'
 import { EvalBar } from './components/EvalBar'
@@ -247,6 +248,8 @@ function App(): JSX.Element {
             cancelScan={insightsScan.cancelScan}
           />
         )}
+
+        {activeTab === 'puzzles' && <PuzzlesTab />}
       </main>
     </div>
   )

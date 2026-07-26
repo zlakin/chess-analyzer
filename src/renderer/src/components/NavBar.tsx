@@ -2,7 +2,7 @@ import { Loader2, BadgeCheck, Sun, Moon } from 'lucide-react'
 import type { ChessComPlayerStats, LinkedAccount, Theme } from '../../../shared/types'
 import { primaryRating } from '../lib/chessComRatingLabels'
 
-export type AppTab = 'analyze' | 'insights'
+export type AppTab = 'analyze' | 'insights' | 'puzzles'
 
 interface NavBarProps {
   activeTab: AppTab
@@ -51,6 +51,12 @@ export function NavBar({
         >
           Insights
           {isScanning && <Loader2 size={14} className="spin-icon" />}
+        </button>
+        <button
+          className={`segmented-control-option${activeTab === 'puzzles' ? ' active' : ''}`}
+          onClick={() => onSelectTab('puzzles')}
+        >
+          Puzzles
         </button>
       </nav>
       <div className="nav-bar-actions">
