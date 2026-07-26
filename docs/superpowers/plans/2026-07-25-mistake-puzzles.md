@@ -80,6 +80,21 @@ epoch milliseconds.
 
 - [ ] **Step 2: Write `src/main/srs/sm2.ts`**
 
+**Revision (caught during Task 1's own task review — a real deviation
+from the standard SM-2 algorithm, not from this plan's own text, so not
+implementer error): the interval for the third-and-later successful
+repetition must be computed using the *pre-update* ease factor, not the
+one just recomputed for this review.** Real SM-2 computes `I(n) =
+I(n-1) * EF` using the ease factor as it stood *before* this review's
+quality-based adjustment, and only updates `EF` afterward, for the *next*
+review to use. Computing the interval with the already-updated `EF` (as
+an earlier draft of this code did) produces increasingly-too-long
+intervals from the third successful review onward — about 12% too long
+by the fifth, and worse from there, since each wrong interval compounds
+into the next. The code below has this fixed: `intervalDays` is computed
+first, against `current.easeFactor`, and `easeFactor` is computed
+afterward.
+
 ```ts
 import type { SrsCardState, SrsQuality } from '../../shared/types'
 
@@ -113,12 +128,15 @@ export function nextCardState(current: SrsCardState, quality: SrsQuality, now: n
   }
 
   const repetitions = current.repetitions + 1
+  // Uses current.easeFactor (the PRE-update value) - real SM-2 computes
+  // this review's interval from the ease factor as it stood going into
+  // the review, then updates the ease factor afterward for next time.
+  const intervalDays =
+    repetitions === 1 ? 1 : repetitions === 2 ? 6 : Math.round(current.intervalDays * current.easeFactor)
   const easeFactor = Math.max(
     MIN_EASE_FACTOR,
     current.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
   )
-  const intervalDays =
-    repetitions === 1 ? 1 : repetitions === 2 ? 6 : Math.round(current.intervalDays * easeFactor)
 
   return {
     ...current,
@@ -133,9 +151,10 @@ export function nextCardState(current: SrsCardState, quality: SrsQuality, now: n
 
 This is the standard SM-2 algorithm (SuperMemo-2, 1987) — quality `< 3`
 is a fail, quality `>= 3` is a pass with the interval growing by
-`previousInterval * easeFactor` from the third successful repetition
-onward. `easeFactor` is clamped to a `1.3` floor so a run of weak passes
-can't shrink it (and therefore future intervals) toward zero.
+`previousInterval * easeFactor` (the pre-update ease factor) from the
+third successful repetition onward. `easeFactor` is clamped to a `1.3`
+floor so a run of weak passes can't shrink it (and therefore future
+intervals) toward zero.
 
 - [ ] **Step 3: Write `src/main/srs/sm2.test.ts`**
 
@@ -170,15 +189,15 @@ describe('sm2', () => {
     expect(state.easeFactor).toBeCloseTo(2.7)
 
     state = nextCardState(state, 5, now())
-    expect(state.intervalDays).toBe(17) // round(6 * 2.8)
+    expect(state.intervalDays).toBe(16) // round(6 * 2.7) - uses the PRE-update EF (2.7), not 2.8
     expect(state.easeFactor).toBeCloseTo(2.8)
 
     state = nextCardState(state, 5, now())
-    expect(state.intervalDays).toBe(49) // round(17 * 2.9)
+    expect(state.intervalDays).toBe(45) // round(16 * 2.8)
     expect(state.easeFactor).toBeCloseTo(2.9)
 
     state = nextCardState(state, 5, now())
-    expect(state.intervalDays).toBe(147) // round(49 * 3.0)
+    expect(state.intervalDays).toBe(131) // round(45 * 2.9)
     expect(state.easeFactor).toBeCloseTo(3.0)
   })
 
