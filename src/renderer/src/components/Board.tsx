@@ -1,6 +1,12 @@
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
-import type { Arrow, SquareRenderer } from 'react-chessboard'
+import type {
+  Arrow,
+  SquareRenderer,
+  PieceDropHandlerArgs,
+  SquareHandlerArgs,
+  PieceHandlerArgs
+} from 'react-chessboard'
 import type { AnalyzedMove } from '../../../shared/types'
 import { MOVE_CLASSIFICATION_STYLE } from '../lib/moveClassificationStyle'
 
@@ -8,6 +14,8 @@ interface BoardProps {
   fen: string
   bestMoveUci: string | null
   currentMove: AnalyzedMove | null
+  boardOrientation: 'white' | 'black'
+  onMove: (from: string, to: string) => boolean
   onHeightChange?: (height: number) => void
 }
 
@@ -15,15 +23,13 @@ export const Board = memo(function Board({
   fen,
   bestMoveUci,
   currentMove,
+  boardOrientation,
+  onMove,
   onHeightChange
 }: BoardProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
 
-  // .board-container is capped by both width and viewport height (see
-  // app.css), so its real rendered size can't be derived from props -
-  // measure it directly and report up so EvalBar (a grid sibling, not a
-  // descendant) can match it instead of relying on the two staying in
-  // sync via a hand-copied CSS pixel value.
   useEffect(() => {
     const el = containerRef.current
     if (!el || !onHeightChange) return
@@ -34,6 +40,14 @@ export const Board = memo(function Board({
     observer.observe(el)
     return () => observer.disconnect()
   }, [onHeightChange])
+
+  // The board's own FEN changing (a real navigation, or a successful
+  // exploration move) means any in-progress click-to-move selection is
+  // stale - clear it rather than let a leftover selection apply against
+  // a position it was never validated for.
+  useEffect(() => {
+    setSelectedSquare(null)
+  }, [fen])
 
   const arrows: Arrow[] = useMemo(
     () =>
@@ -73,15 +87,45 @@ export const Board = memo(function Board({
     }
   }, [badgeSquare, badgeStyle])
 
+  const squareStyles = useMemo(
+    () => (selectedSquare ? { [selectedSquare]: { boxShadow: 'inset 0 0 0 3px var(--accent)' } } : {}),
+    [selectedSquare]
+  )
+
+  function handlePieceDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
+    if (!targetSquare) return false
+    return onMove(sourceSquare, targetSquare)
+  }
+
+  function handleSquareClick({ piece, square }: SquareHandlerArgs): void {
+    if (selectedSquare) {
+      const moved = onMove(selectedSquare, square)
+      setSelectedSquare(moved ? null : piece ? square : null)
+      return
+    }
+    if (piece) setSelectedSquare(square)
+  }
+
+  function canDragPiece({ piece }: PieceHandlerArgs): boolean {
+    // pieceType is 'w'+LETTER / 'b'+LETTER (e.g. 'wP', 'bQ') - confirmed
+    // against react-chessboard's actual fenToPieceCode source, not assumed.
+    const sideToMove = fen.split(' ')[1] === 'b' ? 'b' : 'w'
+    return piece.pieceType.startsWith(sideToMove)
+  }
+
   return (
     <div className="board-container" ref={containerRef}>
       <Chessboard
         options={{
           position: fen,
-          allowDragging: false,
+          allowDragging: true,
+          canDragPiece,
+          onPieceDrop: handlePieceDrop,
+          onSquareClick: handleSquareClick,
           arrows,
-          boardOrientation: 'white',
-          squareRenderer
+          boardOrientation,
+          squareRenderer,
+          squareStyles
         }}
       />
     </div>
