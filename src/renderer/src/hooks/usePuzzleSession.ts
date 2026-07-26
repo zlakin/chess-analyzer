@@ -16,6 +16,7 @@ interface CardProgress {
   cardId: string
   reviewSubmitted: boolean
   hadWrongAttempt: boolean
+  outcomeSubmitted: boolean
 }
 
 export function usePuzzleSession(): {
@@ -114,7 +115,12 @@ export function usePuzzleSession(): {
       // across multiple attempt() calls without forcing a re-render for
       // bookkeeping nobody renders directly.
       const progress =
-        cardProgressRef.current ?? { cardId: currentCard.cardId, reviewSubmitted: false, hadWrongAttempt: false }
+        cardProgressRef.current ?? {
+          cardId: currentCard.cardId,
+          reviewSubmitted: false,
+          hadWrongAttempt: false,
+          outcomeSubmitted: false
+        }
       cardProgressRef.current = progress
 
       if (!progress.reviewSubmitted) {
@@ -132,7 +138,14 @@ export function usePuzzleSession(): {
       }
 
       if (graded.correct) {
-        void submitOutcome(resolveSolvedOutcome(progress.hadWrongAttempt, hintUsed), currentCard.classification)
+        // Guarded the same way as reviewSubmitted above (read-check-set
+        // before the await) so a solved card can't fire the gamification
+        // outcome write twice - e.g. if giveUp() already claimed this card,
+        // or attempt() itself were somehow reachable again after resolving.
+        if (!progress.outcomeSubmitted) {
+          progress.outcomeSubmitted = true
+          void submitOutcome(resolveSolvedOutcome(progress.hadWrongAttempt, hintUsed), currentCard.classification)
+        }
       } else {
         progress.hadWrongAttempt = true
       }
@@ -149,6 +162,21 @@ export function usePuzzleSession(): {
 
   const giveUp = useCallback((): void => {
     if (!currentCard || !hintUsed) return
+
+    // Same get-or-create-then-write-back pattern as attempt() above, so
+    // giveUp() and attempt() share one CardProgress per card instead of
+    // each keeping their own view of it.
+    const progress =
+      cardProgressRef.current ?? {
+        cardId: currentCard.cardId,
+        reviewSubmitted: false,
+        hadWrongAttempt: false,
+        outcomeSubmitted: false
+      }
+    cardProgressRef.current = progress
+
+    if (progress.outcomeSubmitted) return
+    progress.outcomeSubmitted = true
     void submitOutcome('gaveUp', currentCard.classification)
   }, [currentCard, hintUsed, submitOutcome])
 
