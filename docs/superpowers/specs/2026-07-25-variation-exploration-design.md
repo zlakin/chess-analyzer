@@ -306,3 +306,34 @@ Exploring a variation                    [eval, live] [Undo] [Back to game]
 - Persisting/branching explored lines into a real PGN variation tree.
 - `Space` to hide engine assistance (from the original brainstorm,
   explicitly not selected for this pass).
+
+## Minor findings parked at final whole-branch review (2026-07-25)
+
+All Critical/Important findings from the final review were fixed (see git
+history around commits `af196af`/`98647ab`). These six Minor findings were
+deliberately left unfixed — non-blocking, but worth revisiting if this area
+gets touched again:
+
+- **Engine leaks on menu-driven quit.** `stopExplorationEngine()` is only
+  wired to `window-all-closed` (`src/main/index.ts`), which Electron does
+  not emit on `app.quit()`/Cmd+Q via the default app menu — only
+  `will-quit` fires on that path. Add a `will-quit` handler too.
+- **Engine errors are silent.** `useVariationExplorer`'s fetch effect
+  discards `{error}` results with no user feedback and no `.catch()` on
+  the IPC promise — a rejected `ipcRenderer.invoke` would both surface as
+  an unhandled rejection and leave `isEvaluating` stuck true again.
+- **`F` fires while typing or with modifiers held.** The keydown handler
+  in `App.tsx` doesn't check `e.target` or `ctrlKey`/`metaKey`/`altKey`,
+  so typing "fabiano" in `ConnectAccountModal`'s username field (or
+  Cmd+F/Ctrl+F) flips the board. Pre-existing arrow-key bindings share the
+  no-target-check flaw. `F` also has no UI affordance anywhere.
+- **Click-to-move isn't side-to-move gated.** `Board.tsx`'s
+  `handleSquareClick` lets you select an opponent's piece (a dead-end
+  selection); `canDragPiece` already does this check correctly for drag.
+- **Can't click the same square twice to deselect** in click-to-move
+  (inherited from the plan's own given code, not an implementation
+  choice).
+- **Small cleanups:** `ExploringBanner.tsx` imports `whiteWinPercent`
+  unused; `App.tsx`'s `canUndo={true}` on `ExploringBanner` is a hardcoded
+  literal that could just be dropped as a prop; `App.tsx` uses `'...'`
+  while `ExploringBanner.tsx` uses `'…'` for the same loading state.
