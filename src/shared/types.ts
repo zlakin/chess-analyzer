@@ -110,6 +110,11 @@ export interface ChessAPI {
   getInsightsReport(): Promise<InsightsReport>
   getPuzzleQueue(): Promise<PuzzleQueue>
   submitPuzzleReview(cardId: string, quality: SrsQuality): Promise<SrsCardState>
+  getPuzzleStats(): Promise<PuzzleStats>
+  submitPuzzleOutcome(
+    outcome: PuzzleOutcome,
+    classification: 'mistake' | 'blunder'
+  ): Promise<PuzzleStats>
 }
 
 export type TimeControlCategory = 'bullet' | 'blitz' | 'rapid' | 'daily'

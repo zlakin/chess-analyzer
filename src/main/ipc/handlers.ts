@@ -18,7 +18,9 @@ import { synthesizeTopFindings } from '../insights/topFindings'
 import { loadSrsState, saveSrsState } from '../srs/srsStore'
 import { newCardState, nextCardState } from '../srs/sm2'
 import { buildPuzzleQueue } from '../srs/puzzleQueue'
-import type { SrsQuality } from '../../shared/types'
+import { loadPuzzleStats, savePuzzleStats } from '../srs/puzzleStatsStore'
+import { nextPuzzleStats } from '../srs/puzzleRating'
+import type { PuzzleOutcome, SrsQuality } from '../../shared/types'
 
 const ANALYSIS_DEPTH_DEFAULT = 18
 
@@ -186,6 +188,20 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       const current = srsState[cardId] ?? newCardState(cardId, now)
       const updated = nextCardState(current, quality, now)
       saveSrsState({ ...srsState, [cardId]: updated })
+      return updated
+    }
+  )
+
+  ipcMain.handle(IPC_CHANNELS.getPuzzleStats, async () => {
+    return loadPuzzleStats()
+  })
+
+  ipcMain.handle(
+    IPC_CHANNELS.submitPuzzleOutcome,
+    async (_event, outcome: PuzzleOutcome, classification: 'mistake' | 'blunder') => {
+      const stats = loadPuzzleStats()
+      const updated = nextPuzzleStats(stats, outcome, classification, Date.now())
+      savePuzzleStats(updated)
       return updated
     }
   )

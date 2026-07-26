@@ -6,7 +6,9 @@ import type {
   ChessAPI,
   ScanProgress,
   Theme,
-  SrsQuality
+  SrsQuality,
+  PuzzleOutcome,
+  PuzzleStats
 } from '../shared/types'
 
 const chessAPI: ChessAPI = {
@@ -38,7 +40,10 @@ const chessAPI: ChessAPI = {
   getInsightsReport: () => ipcRenderer.invoke(IPC_CHANNELS.getInsightsReport),
   getPuzzleQueue: () => ipcRenderer.invoke(IPC_CHANNELS.getPuzzleQueue),
   submitPuzzleReview: (cardId: string, quality: SrsQuality) =>
-    ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleReview, cardId, quality)
+    ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleReview, cardId, quality),
+  getPuzzleStats: () => ipcRenderer.invoke(IPC_CHANNELS.getPuzzleStats),
+  submitPuzzleOutcome: (outcome: PuzzleOutcome, classification: 'mistake' | 'blunder') =>
+    ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleOutcome, outcome, classification)
 }
 
 contextBridge.exposeInMainWorld('chessAPI', chessAPI)

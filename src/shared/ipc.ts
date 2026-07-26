@@ -17,5 +17,7 @@ export const IPC_CHANNELS = {
   cancelScan: 'insights:cancel-scan',
   getInsightsReport: 'insights:get-report',
   getPuzzleQueue: 'puzzles:get-queue',
-  submitPuzzleReview: 'puzzles:submit-review'
+  submitPuzzleReview: 'puzzles:submit-review',
+  getPuzzleStats: 'puzzles:get-stats',
+  submitPuzzleOutcome: 'puzzles:submit-outcome'
 } as const
