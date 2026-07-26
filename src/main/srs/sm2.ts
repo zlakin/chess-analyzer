@@ -30,12 +30,15 @@ export function nextCardState(current: SrsCardState, quality: SrsQuality, now: n
   }
 
   const repetitions = current.repetitions + 1
+  // Uses current.easeFactor (the PRE-update value) - real SM-2 computes
+  // this review's interval from the ease factor as it stood going into
+  // the review, then updates the ease factor afterward for next time.
+  const intervalDays =
+    repetitions === 1 ? 1 : repetitions === 2 ? 6 : Math.round(current.intervalDays * current.easeFactor)
   const easeFactor = Math.max(
     MIN_EASE_FACTOR,
     current.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
   )
-  const intervalDays =
-    repetitions === 1 ? 1 : repetitions === 2 ? 6 : Math.round(current.intervalDays * easeFactor)
 
   return {
     ...current,

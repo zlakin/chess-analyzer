@@ -28,15 +28,15 @@ describe('sm2', () => {
     expect(state.easeFactor).toBeCloseTo(2.7)
 
     state = nextCardState(state, 5, now())
-    expect(state.intervalDays).toBe(17) // round(6 * 2.8)
+    expect(state.intervalDays).toBe(16) // round(6 * 2.7) - uses the PRE-update EF (2.7), not 2.8
     expect(state.easeFactor).toBeCloseTo(2.8)
 
     state = nextCardState(state, 5, now())
-    expect(state.intervalDays).toBe(49) // round(17 * 2.9)
+    expect(state.intervalDays).toBe(45) // round(16 * 2.8)
     expect(state.easeFactor).toBeCloseTo(2.9)
 
     state = nextCardState(state, 5, now())
-    expect(state.intervalDays).toBe(147) // round(49 * 3.0)
+    expect(state.intervalDays).toBe(131) // round(45 * 2.9)
     expect(state.easeFactor).toBeCloseTo(3.0)
   })
 
