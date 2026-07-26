@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { defaultPuzzleStats, nextRating, nextPuzzleStats } from './puzzleRating'
+import { defaultPuzzleStats, nextRating, nextPuzzleStats, localDateString } from './puzzleRating'
 import type { PuzzleStats } from '../../shared/types'
 
 const DAY_1 = new Date(2026, 0, 1, 10, 0).getTime()
@@ -17,6 +17,24 @@ describe('defaultPuzzleStats', () => {
       solvedToday: 0,
       lastSolvedDate: ''
     })
+  })
+})
+
+describe('localDateString', () => {
+  it('formats a local timestamp as zero-padded YYYY-MM-DD', () => {
+    expect(localDateString(DAY_1)).toBe('2026-01-01')
+    expect(localDateString(new Date(2026, 10, 9, 23, 59).getTime())).toBe('2026-11-09')
+  })
+
+  it('is stable across times within the same local day, and rolls at midnight', () => {
+    expect(localDateString(DAY_1)).toBe(localDateString(DAY_1_LATER))
+    expect(localDateString(DAY_1)).not.toBe(localDateString(DAY_2))
+  })
+
+  it('matches the lastSolvedDate that nextPuzzleStats records', () => {
+    expect(nextPuzzleStats(defaultPuzzleStats(), 'clean', 'mistake', DAY_2).lastSolvedDate).toBe(
+      localDateString(DAY_2)
+    )
   })
 })
 

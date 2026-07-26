@@ -13,7 +13,14 @@ export function loadPuzzleStats(): PuzzleStats {
   if (!existsSync(path)) return defaultPuzzleStats()
 
   try {
-    return JSON.parse(readFileSync(path, 'utf-8')) as PuzzleStats
+    // Merged over defaults rather than cast blind: a parseable-but-partial
+    // file (an older schema, a truncated write) would otherwise hand back
+    // undefined fields, and nextPuzzleStats' arithmetic on an undefined
+    // rating writes NaN straight back to disk - unrecoverable from in-app.
+    return {
+      ...defaultPuzzleStats(),
+      ...(JSON.parse(readFileSync(path, 'utf-8')) as Partial<PuzzleStats>)
+    }
   } catch {
     return defaultPuzzleStats()
   }

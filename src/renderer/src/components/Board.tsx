@@ -136,6 +136,10 @@ export const Board = memo(function Board({
           arrows,
           boardOrientation,
           squareRenderer,
+          // Vestigial: react-chessboard ignores this whenever squareRenderer
+          // is provided (see the note in squareRenderer above - that wrapper
+          // is what actually applies these). Kept only so the highlights keep
+          // working if squareRenderer is ever removed.
           squareStyles
         }}
       />

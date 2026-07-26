@@ -19,7 +19,7 @@ import { loadSrsState, saveSrsState } from '../srs/srsStore'
 import { newCardState, nextCardState } from '../srs/sm2'
 import { buildPuzzleQueue } from '../srs/puzzleQueue'
 import { loadPuzzleStats, savePuzzleStats } from '../srs/puzzleStatsStore'
-import { nextPuzzleStats } from '../srs/puzzleRating'
+import { nextPuzzleStats, localDateString } from '../srs/puzzleRating'
 import type { PuzzleOutcome, SrsQuality } from '../../shared/types'
 
 const ANALYSIS_DEPTH_DEFAULT = 18
@@ -193,7 +193,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   )
 
   ipcMain.handle(IPC_CHANNELS.getPuzzleStats, async () => {
-    return loadPuzzleStats()
+    // solvedToday is only ever rolled over on a write, so a returning user
+    // would otherwise see yesterday's count until their first solve today.
+    // Normalize on read, deliberately without writing back - the persisted
+    // lastSolvedDate is what the next write needs to compare against.
+    const stats = loadPuzzleStats()
+    return stats.lastSolvedDate === localDateString(Date.now())
+      ? stats
+      : { ...stats, solvedToday: 0 }
   })
 
   ipcMain.handle(

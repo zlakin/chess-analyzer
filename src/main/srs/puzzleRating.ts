@@ -31,7 +31,12 @@ export function nextRating(
   return Math.max(RATING_FLOOR, current + delta)
 }
 
-function localDateString(now: number): string {
+/**
+ * The app's canonical "which day is it" key, in the user's local timezone.
+ * Exported because reads normalize against it too (getPuzzleStats zeroes a
+ * stale solvedToday without writing), not just the write path below.
+ */
+export function localDateString(now: number): string {
   const d = new Date(now)
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')

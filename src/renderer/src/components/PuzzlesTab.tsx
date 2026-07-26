@@ -73,7 +73,9 @@ export function PuzzlesTab(): JSX.Element {
       : '—'
 
   const handleMove = (from: string, to: string): boolean => {
-    if (result !== null || gaveUp) return false // already resolved or waiting on Retry
+    // Already resolved, waiting on Retry, or still awaiting the engine on a
+    // previous move - a second concurrent attempt() would race the first.
+    if (result !== null || gaveUp || isGrading) return false
 
     const fenAfterAttempt = tryMove(currentCard.fenBefore, from, to)
     if (!fenAfterAttempt) return false
@@ -93,8 +95,16 @@ export function PuzzlesTab(): JSX.Element {
   }
 
   const handleGiveUp = (): void => {
+    // Mirrors the button's own disabled condition, so taggedGaveUp can't
+    // flip on a click the hook itself would have no-opped. (giveUp() also
+    // no-ops when !hintUsed, which the button already gates.)
+    if (!currentCard || isGrading) return
     giveUp()
     setTaggedGaveUp(currentCard.cardId)
+    // The reveal is the whole story now - clear any wrong-attempt feedback
+    // so two contradictory panels can't render at once.
+    setTaggedResult(null)
+    setTaggedAttempt(null)
   }
 
   const tags = tacticTags(currentCard.missedTactics, currentCard.punishedByTactics)
@@ -107,9 +117,9 @@ export function PuzzlesTab(): JSX.Element {
             <span className="puzzle-stat-value">{stats.rating}</span>
             <span className="puzzle-stat-label">Rating</span>
           </div>
-          <div className="puzzle-stat-tile">
+          <div className="puzzle-stat-tile" title={`Best: ${stats.longestStreak}`}>
             <span className="puzzle-stat-value">{stats.currentStreak}</span>
-            <span className="puzzle-stat-label">Streak</span>
+            <span className="puzzle-stat-label">Solve streak</span>
           </div>
           <div className="puzzle-stat-tile">
             <span className="puzzle-stat-value">{stats.solvedToday}</span>
@@ -142,6 +152,14 @@ export function PuzzlesTab(): JSX.Element {
               <span>{result.error}</span>
               <button className="button-secondary" onClick={handleRetry}>
                 Retry
+              </button>
+              {/* An error is an illegal move or an engine failure, not a real
+                  attempt - nothing was graded and no review or outcome was
+                  recorded - so skipping past it doesn't undermine the rule
+                  that giving up requires a hint first. Without Next, a
+                  persistently failing engine leaves the card unskippable. */}
+              <button className="button-primary" onClick={next}>
+                Next
               </button>
             </div>
           )}

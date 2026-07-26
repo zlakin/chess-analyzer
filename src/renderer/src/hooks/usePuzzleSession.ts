@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PuzzleCard, PuzzleOutcome, PuzzleStats } from '../../../shared/types'
 import { tryMove } from '../lib/tryMove'
 import { gradeAttempt } from '../lib/gradeAttempt'
-import { resolveSolvedOutcome, cappedQuality } from '../lib/puzzleOutcome'
+import type { CardProgress } from '../lib/puzzleOutcome'
+import {
+  resolveSolvedOutcome,
+  cappedQuality,
+  newCardProgress,
+  claimReview,
+  claimOutcome
+} from '../lib/puzzleOutcome'
 
 const PUZZLE_DEPTH = 12
 
@@ -12,11 +19,20 @@ export interface PuzzleAttemptResult {
   bestMoveUci: string
 }
 
-interface CardProgress {
-  cardId: string
-  reviewSubmitted: boolean
-  hadWrongAttempt: boolean
-  outcomeSubmitted: boolean
+/**
+ * Get-or-create the CardProgress for `cardId`, writing it back to the ref.
+ * Scoped to one card and mutated in place across retries (a ref, not state)
+ * so the one-write-per-card claims - and whether an earlier attempt on this
+ * card was wrong - survive multiple attempt()/giveUp() calls without forcing
+ * a re-render for bookkeeping nobody renders directly. The cardId check
+ * backstops the reset effect: progress from another card is never reused.
+ */
+function progressFor(ref: { current: CardProgress | null }, cardId: string): CardProgress {
+  const existing = ref.current
+  if (existing !== null && existing.cardId === cardId) return existing
+  const fresh = newCardProgress(cardId)
+  ref.current = fresh
+  return fresh
 }
 
 export function usePuzzleSession(): {
@@ -54,7 +70,14 @@ export function usePuzzleSession(): {
   }, [loadQueue])
 
   useEffect(() => {
-    window.chessAPI.getPuzzleStats().then(setStats)
+    window.chessAPI
+      .getPuzzleStats()
+      .then(setStats)
+      .catch((err) => {
+        // Stats are a motivational extra - failing to read them just leaves
+        // the stats bar hidden, same as before the first solve ever.
+        console.error('Failed to load puzzle stats', err)
+      })
   }, [])
 
   const currentCard = queue[0] ?? null
@@ -109,22 +132,9 @@ export function usePuzzleSession(): {
         graded = gradeAttempt(evalBefore, evalAfter, uci, currentCard.bestMoveUci)
       }
 
-      // Scoped to this card and mutated in place across retries (a ref, not
-      // state) so that submitting the SRS review exactly once - and knowing
-      // whether an earlier attempt on this same card was wrong - survives
-      // across multiple attempt() calls without forcing a re-render for
-      // bookkeeping nobody renders directly.
-      const progress =
-        cardProgressRef.current ?? {
-          cardId: currentCard.cardId,
-          reviewSubmitted: false,
-          hadWrongAttempt: false,
-          outcomeSubmitted: false
-        }
-      cardProgressRef.current = progress
+      const progress = progressFor(cardProgressRef, currentCard.cardId)
 
-      if (!progress.reviewSubmitted) {
-        progress.reviewSubmitted = true
+      if (claimReview(progress)) {
         const quality = cappedQuality(graded.quality, hintUsed)
         try {
           await window.chessAPI.submitPuzzleReview(currentCard.cardId, quality)
@@ -138,12 +148,11 @@ export function usePuzzleSession(): {
       }
 
       if (graded.correct) {
-        // Guarded the same way as reviewSubmitted above (read-check-set
-        // before the await) so a solved card can't fire the gamification
-        // outcome write twice - e.g. if giveUp() already claimed this card,
-        // or attempt() itself were somehow reachable again after resolving.
-        if (!progress.outcomeSubmitted) {
-          progress.outcomeSubmitted = true
+        // Guarded the same way as the review above (read-check-set before
+        // the await) so a solved card can't fire the gamification outcome
+        // write twice - e.g. if giveUp() already claimed this card, or
+        // attempt() itself were somehow reachable again after resolving.
+        if (claimOutcome(progress)) {
           void submitOutcome(resolveSolvedOutcome(progress.hadWrongAttempt, hintUsed), currentCard.classification)
         }
       } else {
@@ -163,21 +172,28 @@ export function usePuzzleSession(): {
   const giveUp = useCallback((): void => {
     if (!currentCard || !hintUsed) return
 
-    // Same get-or-create-then-write-back pattern as attempt() above, so
-    // giveUp() and attempt() share one CardProgress per card instead of
-    // each keeping their own view of it.
-    const progress =
-      cardProgressRef.current ?? {
-        cardId: currentCard.cardId,
-        reviewSubmitted: false,
-        hadWrongAttempt: false,
-        outcomeSubmitted: false
-      }
-    cardProgressRef.current = progress
+    // Shares one CardProgress per card with attempt(), so the two can't
+    // each keep their own view of what has already been written.
+    const progress = progressFor(cardProgressRef, currentCard.cardId)
 
-    if (progress.outcomeSubmitted) return
-    progress.outcomeSubmitted = true
-    void submitOutcome('gaveUp', currentCard.classification)
+    // Giving up has to record an SRS review too, not just the gamification
+    // outcome: without one, no SRS entry ever exists for this card, so
+    // buildPuzzleQueue keeps synthesizing a fresh due-now state for it and
+    // the same given-up card loops back forever. Quality 0 is SM-2's
+    // "couldn't recall it", which puts the card a day out. The claim guard
+    // preserves first-resolution-wins - a wrong attempt before the give-up
+    // already submitted its own (capped) review, and that one stands.
+    if (claimReview(progress)) {
+      void window.chessAPI.submitPuzzleReview(currentCard.cardId, 0).catch((err) => {
+        // Same precedent as attempt(): the reveal is still worth showing
+        // even if persisting the new schedule failed.
+        console.error('Failed to persist puzzle review', err)
+      })
+    }
+
+    if (claimOutcome(progress)) {
+      void submitOutcome('gaveUp', currentCard.classification)
+    }
   }, [currentCard, hintUsed, submitOutcome])
 
   const next = useCallback(() => {
