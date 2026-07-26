@@ -97,6 +97,7 @@ export interface ChessAPI {
   fetchChessComStats(username: string): Promise<ChessComPlayerStats | { error: string }>
   getSettings(): Promise<AppSettings>
   setTheme(theme: Theme): Promise<void>
+  evaluatePosition(fen: string, depth: number): Promise<PositionEvaluation | { error: string }>
   startAccountLink(username: string): Promise<{ code: string } | { error: string }>
   verifyAccountLink(): Promise<
     { verified: true; username: string; verifiedAt: number } | { error: string }

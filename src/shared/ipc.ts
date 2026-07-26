@@ -7,6 +7,7 @@ export const IPC_CHANNELS = {
   fetchChessComStats: 'chess:fetch-chesscom-stats',
   getSettings: 'settings:get',
   setTheme: 'settings:set-theme',
+  evaluatePosition: 'engine:evaluate-position',
   startAccountLink: 'account:start-link',
   verifyAccountLink: 'account:verify-link',
   disconnectAccount: 'account:disconnect',

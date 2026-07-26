@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { registerIpcHandlers } from './ipc/handlers'
+import { stopExplorationEngine } from './engine/explorationEngine'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -43,6 +44,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stopExplorationEngine()
   if (process.platform !== 'darwin') {
     app.quit()
   }

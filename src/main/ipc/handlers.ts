@@ -5,6 +5,7 @@ import { IPC_CHANNELS } from '../../shared/ipc'
 import type { AnalyzedPosition, Theme } from '../../shared/types'
 import { StockfishManager } from '../engine/stockfishManager'
 import { getStockfishBinaryPath } from '../engine/stockfishPath'
+import { evaluateExplorationPosition } from '../engine/explorationEngine'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, fetchPlayerStats, ChessComFetchError } from '../chesscom/chessComClient'
 import { loadSettings, saveSettings } from '../settings/settingsStore'
@@ -109,6 +110,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC_CHANNELS.setTheme, async (_event, theme: Theme) => {
     saveSettings({ theme })
+  })
+
+  ipcMain.handle(IPC_CHANNELS.evaluatePosition, async (_event, fen: string, depth: number) => {
+    return evaluateExplorationPosition(fen, depth)
   })
 
   ipcMain.handle(IPC_CHANNELS.startAccountLink, async (_event, username: string) => {

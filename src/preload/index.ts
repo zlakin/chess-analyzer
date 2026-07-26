@@ -16,6 +16,7 @@ const chessAPI: ChessAPI = {
   fetchChessComStats: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComStats, username),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getSettings),
   setTheme: (theme: Theme) => ipcRenderer.invoke(IPC_CHANNELS.setTheme, theme),
+  evaluatePosition: (fen: string, depth: number) => ipcRenderer.invoke(IPC_CHANNELS.evaluatePosition, fen, depth),
   startAccountLink: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.startAccountLink, username),
   verifyAccountLink: () => ipcRenderer.invoke(IPC_CHANNELS.verifyAccountLink),
   disconnectAccount: () => ipcRenderer.invoke(IPC_CHANNELS.disconnectAccount),
