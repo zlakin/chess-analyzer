@@ -445,12 +445,37 @@ Expected: 5 passed, 0 failed. If the first test's exact FEN string doesn't match
 
 - [ ] **Step 4: Write `src/renderer/src/hooks/useVariationExplorer.ts`**
 
+**Revision (caught during the final whole-branch review, after all 4 tasks
+were built and independently confirmed by re-tracing the logic — not
+implementer error, this was wrong in the plan's own original code below):**
+the original version below stored `evaluation` as a bare
+`PositionEvaluation | null`, cleared only on `baseFen` change or
+`exitExploration()` — never on a same-exploration `currentFen` change (a
+new scratch move). Since `sideToMove` is derived from the *new* `currentFen`
+immediately, every scratch move after the first rendered the *previous*
+position's eval number under the *new* side-to-move for the few hundred ms
+until the real eval landed — this codebase's convention (`displayEval.ts`)
+is that eval is relative to side-to-move, so this sign-inverted the bar and
+score on every move but the first, with no loading indicator (`evaluation`
+was truthy, so the `…` branch never showed). The same missing tag also let
+a request that resolved *after* exploration had already ended resurface as
+the *opening* eval of the next, unrelated exploration. Fix: tag the stored
+evaluation with the FEN it was computed for, and only ever expose it when
+that FEN still matches `currentFen` — both failure modes become structurally
+impossible instead of needing separate staleness guards. The code block
+below has this fix applied.
+
 ```ts
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PositionEvaluation } from '../../../shared/types'
 import { tryMove } from '../lib/tryMove'
 
 const EXPLORATION_DEPTH = 12
+
+interface EvaluatedPosition {
+  fen: string
+  evaluation: PositionEvaluation
+}
 
 export function useVariationExplorer(baseFen: string): {
   isExploring: boolean
@@ -463,7 +488,7 @@ export function useVariationExplorer(baseFen: string): {
   exitExploration: () => void
 } {
   const [scratchHistory, setScratchHistory] = useState<string[]>([])
-  const [evaluation, setEvaluation] = useState<PositionEvaluation | null>(null)
+  const [evaluated, setEvaluated] = useState<EvaluatedPosition | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const requestIdRef = useRef(0)
 
@@ -472,12 +497,18 @@ export function useVariationExplorer(baseFen: string): {
   // being viewed, so it's cleared rather than left dangling.
   useEffect(() => {
     setScratchHistory([])
-    setEvaluation(null)
+    setEvaluated(null)
   }, [baseFen])
 
   const currentFen = scratchHistory[scratchHistory.length - 1] ?? baseFen
   const isExploring = scratchHistory.length > 0
   const sideToMove: 'w' | 'b' = currentFen.split(' ')[1] === 'b' ? 'b' : 'w'
+  // Only ever expose an evaluation that was computed for the exact position
+  // being shown right now - a stale eval for a position we've since moved
+  // away from (or stopped exploring) is worse than no eval, since it reads
+  // as current and, being relative to the old side-to-move, can be
+  // sign-inverted against the new one.
+  const evaluation = evaluated?.fen === currentFen ? evaluated.evaluation : null
 
   useEffect(() => {
     if (!isExploring) return
@@ -489,7 +520,7 @@ export function useVariationExplorer(baseFen: string): {
       if (requestIdRef.current !== requestId) return
       setIsEvaluating(false)
       if ('error' in result) return
-      setEvaluation(result)
+      setEvaluated({ fen: currentFen, evaluation: result })
     })
   }, [currentFen, isExploring])
 
@@ -520,7 +551,7 @@ export function useVariationExplorer(baseFen: string): {
 
   const exitExploration = useCallback(() => {
     setScratchHistory([])
-    setEvaluation(null)
+    setEvaluated(null)
   }, [])
 
   return {
@@ -820,6 +851,37 @@ Add state and the hook call, alongside the existing `boardHeight` state (from th
 ```
 
 Place this *after* `position` is computed (the existing `useMemo` for `position`/`currentMove` earlier in the file) since it depends on `position.fen`.
+
+**Revision (caught during the final whole-branch review):** `useVariationExplorer`'s reset effect is keyed on `baseFen` (i.e. `position.fen`) changing. But `position.fen` at ply 0 is always the same standard-starting-position string for any game that starts from the normal setup — so clicking "New Game" (which calls the pre-existing `reset()` + `setCurrentPly(0)`) or loading a different game via `handleGameLoaded` (which calls the pre-existing `setCurrentPly(0)` then `startAnalysis(...)`) does not change `baseFen` at all when the user was exploring at ply 0, and any in-progress exploration silently survives into the newly reset/loaded game — invisible until moves stream in, at which point the board, eval bar, and banner all show the old game's abandoned scratch position instead of the new game. Both handlers predate this plan and aren't otherwise touched by it, but each needs one added line calling `explorer.exitExploration()` so a game swap can never leave stale exploration state behind, regardless of what FEN it happens to collide with:
+
+```ts
+  const handleGameLoaded = (pgn: string): void => {
+    setPgnError(null)
+    try {
+      const positions = parsePgn(pgn)
+      setPlayers({
+        white: pgn.match(/\[White "([^"]*)"\]/)?.[1] ?? 'White',
+        black: pgn.match(/\[Black "([^"]*)"\]/)?.[1] ?? 'Black'
+      })
+      setCurrentPly(0)
+      explorer.exitExploration()
+      void startAnalysis(positions)
+    } catch (err) {
+      setPgnError(err instanceof PgnParseError ? err.message : 'Could not parse this PGN')
+    }
+  }
+```
+
+```ts
+  const handleNewGame = (): void => {
+    reset()
+    setCurrentPly(0)
+    explorer.exitExploration()
+    setPgnError(null)
+  }
+```
+
+Both handlers are defined earlier in the file than the `const explorer = useVariationExplorer(position.fen)` line — this is fine as written (neither handler body executes until a later render has completed and `explorer` is initialized, a standard React closure pattern), so there's no need to reorder anything.
 
 Extend the existing keydown `useEffect` (the one handling `ArrowLeft`/`ArrowRight`/`Home`/`End`) to also handle `F`:
 
