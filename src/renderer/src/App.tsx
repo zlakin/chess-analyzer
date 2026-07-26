@@ -63,6 +63,7 @@ function App(): JSX.Element {
         black: pgn.match(/\[Black "([^"]*)"\]/)?.[1] ?? 'Black'
       })
       setCurrentPly(0)
+      explorer.exitExploration()
       void startAnalysis(positions)
     } catch (err) {
       setPgnError(err instanceof PgnParseError ? err.message : 'Could not parse this PGN')
@@ -77,6 +78,7 @@ function App(): JSX.Element {
   const handleNewGame = (): void => {
     reset()
     setCurrentPly(0)
+    explorer.exitExploration()
     setPgnError(null)
   }
 

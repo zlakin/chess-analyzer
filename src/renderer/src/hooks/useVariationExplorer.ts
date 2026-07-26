@@ -4,6 +4,11 @@ import { tryMove } from '../lib/tryMove'
 
 const EXPLORATION_DEPTH = 12
 
+interface EvaluatedPosition {
+  fen: string
+  evaluation: PositionEvaluation
+}
+
 export function useVariationExplorer(baseFen: string): {
   isExploring: boolean
   currentFen: string
@@ -15,7 +20,7 @@ export function useVariationExplorer(baseFen: string): {
   exitExploration: () => void
 } {
   const [scratchHistory, setScratchHistory] = useState<string[]>([])
-  const [evaluation, setEvaluation] = useState<PositionEvaluation | null>(null)
+  const [evaluated, setEvaluated] = useState<EvaluatedPosition | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const requestIdRef = useRef(0)
 
@@ -24,12 +29,18 @@ export function useVariationExplorer(baseFen: string): {
   // being viewed, so it's cleared rather than left dangling.
   useEffect(() => {
     setScratchHistory([])
-    setEvaluation(null)
+    setEvaluated(null)
   }, [baseFen])
 
   const currentFen = scratchHistory[scratchHistory.length - 1] ?? baseFen
   const isExploring = scratchHistory.length > 0
   const sideToMove: 'w' | 'b' = currentFen.split(' ')[1] === 'b' ? 'b' : 'w'
+  // Only ever expose an evaluation that was computed for the exact position
+  // being shown right now - a stale eval for a position we've since moved
+  // away from (or stopped exploring) is worse than no eval, since it reads
+  // as current and, being relative to the old side-to-move, can be
+  // sign-inverted against the new one.
+  const evaluation = evaluated?.fen === currentFen ? evaluated.evaluation : null
 
   useEffect(() => {
     if (!isExploring) return
@@ -41,7 +52,7 @@ export function useVariationExplorer(baseFen: string): {
       if (requestIdRef.current !== requestId) return
       setIsEvaluating(false)
       if ('error' in result) return
-      setEvaluation(result)
+      setEvaluated({ fen: currentFen, evaluation: result })
     })
   }, [currentFen, isExploring])
 
@@ -72,7 +83,7 @@ export function useVariationExplorer(baseFen: string): {
 
   const exitExploration = useCallback(() => {
     setScratchHistory([])
-    setEvaluation(null)
+    setEvaluated(null)
   }, [])
 
   return {
