@@ -302,3 +302,49 @@ Insights.
 - Puzzle streaks, a completion calendar, or any other gamification layer
   on top of the raw SRS queue.
 - Cross-device sync of SRS state.
+
+## Minor findings parked at final whole-branch review (2026-07-25)
+
+All Critical/Important findings from the final review were fixed (see
+the plan's "Final review fixes" section and the commit it produced).
+These nine Minor findings were deliberately left unfixed — non-blocking,
+but worth revisiting if this area gets touched again:
+
+- **Pre-scan vs. zero-mistakes empty state.** The empty state keys off
+  `nextDueAt === null`, so a user who scanned but had zero mistakes sees
+  "Run an Insights scan..." instead of a more accurate message. Would
+  need `getPuzzleQueue` to also return scan metadata.
+- **Unused payload fields.** `PuzzleCard.playedMoveUci`/`.classification`/
+  `.phase`/`.gameUrl`/`.ply`, `PuzzleAttemptResult.cpLoss`, and
+  `submitPuzzleReview`'s returned `SrsCardState` are all computed and
+  shipped but never rendered. A "next review in N days" line on the
+  feedback banner (from the returned `SrsCardState.dueDate`) would be
+  cheap and would make the SRS layer legible to the user.
+- **Unreachable error strings.** `usePuzzleSession.attempt()`'s
+  `{error: 'No puzzle to attempt.'}`/`{error: 'Illegal move.'}` branches
+  are dead code today — `PuzzlesTab`'s `handleMove` already pre-validates
+  with the same `tryMove` call and only invokes `attempt` when a card
+  exists. Harmless, kept for the hook's own self-contained safety.
+- **Stale "N puzzles due" during feedback.** By design (`attempt()`
+  doesn't refetch), the count still includes the just-answered card
+  until "Next"/"Retry" is clicked. Cosmetic.
+- **`srs-state.json` isn't cleared on a chess.com account switch.**
+  `insightsStore.ensureUsernameScope` wipes the games cache but not the
+  SRS store — the previous account's card entries (keyed by game URL)
+  persist indefinitely. Harmless (the join drops unmatched entries) but
+  unbounded growth plus residual URLs from another account.
+- **A `submitPuzzleReview` failure silently repeats the same card
+  forever.** If persistence fails, the card's due date never advances,
+  so it resurfaces at the head of the queue on the next refetch with no
+  indication to the user of why.
+- **Auto-queen-only promotion.** `tryMove`'s hardcoded `promotion: 'q'`
+  means a puzzle whose answer is an underpromotion can never be
+  correctly answered. Inherited from the variation-exploration feature's
+  own accepted limitation, not introduced here.
+- **`Math.min(...cards.map(...))` spread.** Safe at today's real-world
+  scale (~600 cards) but has no hard ceiling; a `reduce` would remove it
+  for free if ever revisited.
+- **No "Show answer" / "Skip" control for a puzzle the user genuinely
+  can't solve.** Today the only way to see the solution is to play a
+  move and fail — which pollutes that card's own SRS history with a
+  miss the user didn't really attempt.

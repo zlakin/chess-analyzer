@@ -1175,3 +1175,438 @@ UI are verified via `run-desktop` against the actual built app, matching
 this codebase's established, deliberate no-jsdom policy (the same
 approach already used for `Board.tsx`'s drag/click input and the
 exploration banner).
+
+## Final review fixes (2026-07-25)
+
+All 4 tasks were built and individually reviewed clean before these were
+found — the final whole-branch review caught five issues only visible
+with the full picture (four of them span the seam between two tasks'
+code, which is exactly what a scoped task review structurally can't
+see). All five are fixed together, below, before merge.
+
+**1. The revealed best-move arrow was drawn on the wrong position.**
+`PuzzlesTab.tsx` kept showing `attemptFen` (the position *after* the
+user's attempt) even once a verdict had landed, but `bestMoveUci`
+describes a move in `fenBefore`, one ply earlier — so the reveal arrow
+pointed from a square that was no longer occupied, in a position where
+it wasn't even the right side's move. Fix: once graded, the board
+reverts to `fenBefore`; `attemptFen` is now only shown during the
+in-flight grading window.
+
+**2. A failed grade (engine error) was a dead end.** `handleMove`
+rejected all further input once `result` was set, but the "Next" button
+only rendered on a *successful* verdict — an error left the user with no
+way to continue short of switching tabs. Fix: the error state now shows
+its own "Retry" (clears the attempt, re-enables input) and "Next" (skip
+this card) buttons.
+
+**3. Grading depth (12) could disagree with the recorded answer's scan
+depth (14) enough to mark the recorded correct move wrong.** Every
+puzzle is, by construction, a sharp tactical position — exactly where
+shallow-search instability is worst. Fix: an attempt matching
+`bestMoveUci` exactly (tolerating a missing auto-queen `q` suffix) now
+grades as an automatic quality-5 pass *without* running a live eval at
+all — both fixing the mismatch and skipping two engine calls for the
+common case of playing the actual answer. This logic is extracted into
+a new pure, testable function, `gradeAttempt`, closing a real gap the
+final review flagged: the grading pipeline (the feature's core value
+proposition) had zero automated test coverage.
+
+**4. `srs-state.json` was written non-atomically, on every single
+review, with a silent full-loss fallback on any corruption.** This is
+the feature's one genuinely irreplaceable store (unlike the Insights
+cache, which regenerates by rescanning) — a process kill mid-write could
+silently reset a user's entire review history. Fix: write-to-temp-file
+then rename (atomic on POSIX and NTFS).
+
+**5. `next()` refetched the entire puzzle queue on every single card.**
+Against this repo's own test account, a single 100-game scan produces
+607 mistakes — not the "tens to a couple hundred" the plan's no-caps
+non-goal was reasoned from. Refetching means re-reading and
+re-JSON-parsing every cached game record (up to ~100 synchronous file
+reads) on every card, and re-deriving all 607 cards, for the entire
+session. Fix: `next()` now only advances the already-fetched local
+queue; it refetches from the server only once that local queue is fully
+drained (a genuinely rare event now, not a per-card one) — safe because
+SM-2's minimum interval is always ≥1 day, so a just-reviewed card can
+never legitimately reappear as due within the same session regardless
+of when the refetch happens.
+
+Fixing 1 and 2 together required restructuring how `attemptFen`/`result`
+are tracked, which also closes a subtler bug the review surfaced: the
+existing `useEffect` that reset per-card state ran *after* the render
+that already showed the new card's content, so a fast "Next" click could
+paint one frame mixing the new card's tactic tags with the previous
+card's leftover board/feedback. The fix below tags each piece of
+transient state with the `cardId` it belongs to and derives the
+displayed value only when the tag matches the *current* card — so a
+stale value can never render, structurally, rather than being cleared
+just-in-time by an effect.
+
+- [ ] **Step A: Create `src/renderer/src/lib/gradeAttempt.ts`**
+
+```ts
+import type { PositionEvaluation, SrsQuality } from '../../../shared/types'
+import { computeMoveEvalDelta } from '../../../shared/engineMath'
+import { cpLossToQuality } from './cpLossToQuality'
+
+export interface GradedAttempt {
+  correct: boolean
+  cpLoss: number
+  quality: SrsQuality
+}
+
+export function gradeAttempt(
+  evalBefore: PositionEvaluation,
+  evalAfter: PositionEvaluation,
+  attemptedUci: string,
+  bestMoveUci: string
+): GradedAttempt {
+  if (attemptedUci === bestMoveUci || `${attemptedUci}q` === bestMoveUci) {
+    return { correct: true, cpLoss: 0, quality: 5 }
+  }
+  const { cpLoss } = computeMoveEvalDelta(evalBefore, evalAfter, attemptedUci)
+  const quality = cpLossToQuality(cpLoss)
+  return { correct: quality >= 3, cpLoss, quality }
+}
+```
+
+- [ ] **Step B: Create `src/renderer/src/lib/gradeAttempt.test.ts`**
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { gradeAttempt } from './gradeAttempt'
+import type { PositionEvaluation } from '../../../shared/types'
+
+function evalWithCp(cp: number): PositionEvaluation {
+  return { lines: [{ depth: 12, scoreCp: cp, scoreMate: null, moveUci: 'a1a1', pv: [] }] }
+}
+
+function evalWithMate(mate: number): PositionEvaluation {
+  return { lines: [{ depth: 12, scoreCp: null, scoreMate: mate, moveUci: 'a1a1', pv: [] }] }
+}
+
+describe('gradeAttempt', () => {
+  it('grades an exact match to bestMoveUci as a perfect pass without needing real eval data', () => {
+    const result = gradeAttempt(evalWithCp(0), evalWithCp(0), 'e2e4', 'e2e4')
+    expect(result).toEqual({ correct: true, cpLoss: 0, quality: 5 })
+  })
+
+  it('tolerates a missing auto-queen suffix on the recorded best move', () => {
+    const result = gradeAttempt(evalWithCp(0), evalWithCp(0), 'e7e8', 'e7e8q')
+    expect(result).toEqual({ correct: true, cpLoss: 0, quality: 5 })
+  })
+
+  it('grades a delivered mate as a pass', () => {
+    const result = gradeAttempt(evalWithCp(500), evalWithMate(0), 'h5f7', 'a1a2')
+    expect(result.correct).toBe(true)
+  })
+
+  it('grades a missed mate as a fail', () => {
+    const result = gradeAttempt(evalWithMate(1), evalWithCp(50), 'a1a2', 'h5f7')
+    expect(result.correct).toBe(false)
+  })
+
+  it('is a pass at exactly the quality-3 cp-loss boundary (100) and a fail just past it', () => {
+    const pass = gradeAttempt(evalWithCp(100), evalWithCp(0), 'a1a2', 'h5f7')
+    expect(pass.correct).toBe(true)
+    const fail = gradeAttempt(evalWithCp(101), evalWithCp(0), 'a1a2', 'h5f7')
+    expect(fail.correct).toBe(false)
+  })
+})
+```
+
+Run `npx vitest run src/renderer/src/lib/gradeAttempt.test.ts` — expect
+5 passed, 0 failed.
+
+- [ ] **Step C: Replace `src/renderer/src/hooks/usePuzzleSession.ts` in full**
+
+```ts
+import { useCallback, useEffect, useState } from 'react'
+import type { PuzzleCard } from '../../../shared/types'
+import { tryMove } from '../lib/tryMove'
+import { gradeAttempt } from '../lib/gradeAttempt'
+
+const PUZZLE_DEPTH = 12
+
+export interface PuzzleAttemptResult {
+  correct: boolean
+  cpLoss: number
+  bestMoveUci: string
+}
+
+export function usePuzzleSession(): {
+  queue: PuzzleCard[]
+  nextDueAt: number | null
+  currentCard: PuzzleCard | null
+  attempt: (from: string, to: string) => Promise<PuzzleAttemptResult | { error: string }>
+  next: () => void
+  isLoading: boolean
+} {
+  const [queue, setQueue] = useState<PuzzleCard[]>([])
+  const [nextDueAt, setNextDueAt] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadQueue = useCallback(async () => {
+    setIsLoading(true)
+    const result = await window.chessAPI.getPuzzleQueue()
+    setQueue(result.due)
+    setNextDueAt(result.nextDueAt)
+    setIsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void loadQueue()
+  }, [loadQueue])
+
+  const currentCard = queue[0] ?? null
+
+  const attempt = useCallback(
+    async (from: string, to: string): Promise<PuzzleAttemptResult | { error: string }> => {
+      if (!currentCard) return { error: 'No puzzle to attempt.' }
+
+      const uci = `${from}${to}`
+      const fenAfterAttempt = tryMove(currentCard.fenBefore, from, to)
+      if (!fenAfterAttempt) return { error: 'Illegal move.' }
+
+      let graded: ReturnType<typeof gradeAttempt>
+      if (uci === currentCard.bestMoveUci || `${uci}q` === currentCard.bestMoveUci) {
+        // Matches the recorded best move exactly - grade it a pass
+        // without running a live eval at all. This also sidesteps a
+        // real problem: bestMoveUci was found at the scan's depth (14),
+        // but grading runs shallower (12) for speed - in a sharp,
+        // tactically-loaded position (every puzzle is one, by
+        // definition), that depth gap could otherwise make playing the
+        // *exact recorded answer* grade as a fail.
+        graded = { correct: true, cpLoss: 0, quality: 5 }
+      } else {
+        const [evalBefore, evalAfter] = await Promise.all([
+          window.chessAPI.evaluatePosition(currentCard.fenBefore, PUZZLE_DEPTH),
+          window.chessAPI.evaluatePosition(fenAfterAttempt, PUZZLE_DEPTH)
+        ])
+        if ('error' in evalBefore) return { error: evalBefore.error }
+        if ('error' in evalAfter) return { error: evalAfter.error }
+        graded = gradeAttempt(evalBefore, evalAfter, uci, currentCard.bestMoveUci)
+      }
+
+      try {
+        await window.chessAPI.submitPuzzleReview(currentCard.cardId, graded.quality)
+      } catch (err) {
+        // The grading verdict itself is still valid and worth showing
+        // even if persisting the new SRS schedule failed - logged, not
+        // surfaced, matching this app's existing precedent for
+        // storage-layer hiccups elsewhere.
+        console.error('Failed to persist puzzle review', err)
+      }
+
+      return { correct: graded.correct, cpLoss: graded.cpLoss, bestMoveUci: currentCard.bestMoveUci }
+    },
+    [currentCard]
+  )
+
+  const next = useCallback(() => {
+    setQueue((q) => {
+      const rest = q.slice(1)
+      // Only go back to the server once the local queue is actually
+      // drained - a just-reviewed card's new dueDate is always at least
+      // 1 day out (SM-2's minimum interval), so it can never legitimately
+      // reappear as due within this same session. Refetching on every
+      // card instead would mean re-reading and re-parsing every cached
+      // game record on disk (up to ~100 files) for every single puzzle.
+      if (rest.length === 0) void loadQueue()
+      return rest
+    })
+  }, [loadQueue])
+
+  return { queue, nextDueAt, currentCard, attempt, next, isLoading }
+}
+```
+
+- [ ] **Step D: Replace `src/renderer/src/components/PuzzlesTab.tsx` in full**
+
+```tsx
+import { useState } from 'react'
+import type { PuzzleAttemptResult } from '../hooks/usePuzzleSession'
+import { usePuzzleSession } from '../hooks/usePuzzleSession'
+import { tryMove } from '../lib/tryMove'
+import { TACTIC_LABELS } from '../lib/tacticLabels'
+import { Board } from './Board'
+import type { TacticType } from '../../../shared/types'
+
+function tacticTags(missed: TacticType[], punished: TacticType[]): TacticType[] {
+  return Array.from(new Set([...missed, ...punished]))
+}
+
+interface TaggedAttempt {
+  cardId: string
+  fen: string
+}
+
+interface TaggedResult {
+  cardId: string
+  result: PuzzleAttemptResult | { error: string }
+}
+
+export function PuzzlesTab(): JSX.Element {
+  const { queue, nextDueAt, currentCard, attempt, next, isLoading } = usePuzzleSession()
+  const [taggedAttempt, setTaggedAttempt] = useState<TaggedAttempt | null>(null)
+  const [taggedResult, setTaggedResult] = useState<TaggedResult | null>(null)
+  const [isGrading, setIsGrading] = useState(false)
+
+  // Tagging each value with the cardId it belongs to, and only ever
+  // reading it back when that tag matches the *current* card, means a
+  // stale attempt/result from a just-abandoned card can never render -
+  // structurally, not just via a same-tick effect racing the paint.
+  const attemptFen = taggedAttempt?.cardId === currentCard?.cardId ? taggedAttempt.fen : null
+  const result = taggedResult?.cardId === currentCard?.cardId ? taggedResult.result : null
+
+  if (isLoading) return <div className="puzzles-tab" />
+
+  if (!currentCard) {
+    return (
+      <div className="puzzles-tab">
+        <p className="puzzle-empty-message">
+          {nextDueAt === null
+            ? 'Run an Insights scan to build your practice queue.'
+            : `You're all caught up — next review due ${new Date(nextDueAt).toLocaleDateString()}.`}
+        </p>
+      </div>
+    )
+  }
+
+  const handleMove = (from: string, to: string): boolean => {
+    if (result !== null) return false // already graded this card, waiting on Retry/Next
+
+    const fenAfterAttempt = tryMove(currentCard.fenBefore, from, to)
+    if (!fenAfterAttempt) return false
+
+    setTaggedAttempt({ cardId: currentCard.cardId, fen: fenAfterAttempt })
+    setIsGrading(true)
+    void attempt(from, to).then((r) => {
+      setIsGrading(false)
+      setTaggedResult({ cardId: currentCard.cardId, result: r })
+    })
+    return true
+  }
+
+  const handleRetry = (): void => {
+    setTaggedAttempt(null)
+    setTaggedResult(null)
+  }
+
+  const tags = tacticTags(currentCard.missedTactics, currentCard.punishedByTactics)
+  const graded = result !== null && 'correct' in result
+
+  return (
+    <div className="puzzles-tab">
+      <div className="analysis-layout">
+        <div className="board-column">
+          <Board
+            // While grading (or ungraded), show wherever the attempt
+            // landed. Once a verdict exists, revert to fenBefore -
+            // bestMoveUci describes a move IN fenBefore, one ply earlier
+            // than wherever the attempt ended up, so the reveal arrow
+            // below is only ever correct against fenBefore.
+            fen={result === null && attemptFen !== null ? attemptFen : currentCard.fenBefore}
+            bestMoveUci={graded ? currentCard.bestMoveUci : null}
+            currentMove={null}
+            boardOrientation={currentCard.userColor === 'w' ? 'white' : 'black'}
+            onMove={handleMove}
+          />
+          {result !== null && 'error' in result && (
+            <div className="puzzle-feedback puzzle-feedback-incorrect">
+              <span>{result.error}</span>
+              <button className="button-secondary" onClick={handleRetry}>
+                Retry
+              </button>
+              <button className="button-secondary" onClick={next}>
+                Next
+              </button>
+            </div>
+          )}
+          {graded && result !== null && 'correct' in result && (
+            <div className={`puzzle-feedback ${result.correct ? 'puzzle-feedback-correct' : 'puzzle-feedback-incorrect'}`}>
+              <span>{result.correct ? 'Correct!' : 'Not quite.'}</span>
+              <button className="button-secondary" onClick={next}>
+                Next
+              </button>
+            </div>
+          )}
+          {isGrading && <p className="puzzle-status-panel">Grading…</p>}
+        </div>
+        <div className="side-panel">
+          <p className="puzzle-status-panel">
+            {queue.length} puzzle{queue.length === 1 ? '' : 's'} due
+          </p>
+          {tags.length > 0 && (
+            <div className="tactic-chip-row">
+              {tags.map((tag) => (
+                <span key={tag} className="tactic-chip">
+                  {TACTIC_LABELS[tag]}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="puzzle-status-panel">
+            {`vs ${currentCard.opponentUsername} · ${new Date(currentCard.endTime * 1000).toLocaleDateString()}`}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step E: Make `saveSrsState` in `src/main/srs/srsStore.ts` write atomically**
+
+Replace the function body:
+
+```ts
+export function saveSrsState(state: Record<string, SrsCardState>): void {
+  const path = srsStatePath()
+  mkdirSync(app.getPath('userData'), { recursive: true })
+  const tmpPath = `${path}.tmp`
+  writeFileSync(tmpPath, JSON.stringify(state, null, 2), 'utf-8')
+  renameSync(tmpPath, path)
+}
+```
+
+Add `renameSync` to the existing `node:fs` import at the top of the file
+(alongside `existsSync, readFileSync, writeFileSync, mkdirSync`). A
+rename is atomic on both POSIX and NTFS — a process killed between the
+temp-file write and the rename leaves the *old* `srs-state.json`
+untouched, never a half-written one.
+
+- [ ] **Step F: Verify, build, and re-run `run-desktop`**
+
+```bash
+npm run verify
+```
+
+Expected: typecheck clean, all tests pass (245 existing + 5 new
+`gradeAttempt` tests = 250).
+
+```bash
+npm run build
+```
+
+Expected: builds cleanly.
+
+Re-run the exact `run-desktop` script from Task 4's Step 6 (same
+technique: screenshot the real due card first, don't guess a move
+blindly). This time also specifically verify: (1) after a *correct*
+attempt, the arrow shown lands on a square that's actually occupied in
+the position the board is showing (not the post-attempt position); (2)
+if you can force a grading error (e.g., temporarily point
+`window.chessAPI.evaluatePosition` at a bad channel name via the
+browser console, then restore it), confirm both "Retry" and "Next" are
+present and clickable rather than the tab going dead.
+
+- [ ] **Step G: Commit**
+
+```bash
+git add src/renderer/src/lib/gradeAttempt.ts src/renderer/src/lib/gradeAttempt.test.ts \
+  src/renderer/src/hooks/usePuzzleSession.ts src/renderer/src/components/PuzzlesTab.tsx \
+  src/main/srs/srsStore.ts
+git commit -m "Fix reveal-arrow position, grading dead end, depth mismatch, atomic SRS writes, and per-card queue refetch"
+```
