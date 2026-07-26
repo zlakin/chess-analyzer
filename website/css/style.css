@@ -234,9 +234,6 @@ body {
   object-position: top;
   display: block;
 }
-.feature-card-analysis img {
-  object-position: 30% top;
-}
 .feature-tag {
   display: flex;
   align-items: center;
@@ -343,6 +340,12 @@ body {
   }
   .wishlist-form {
     flex-direction: column;
+  }
+  .wishlist-form input[type="email"] {
+    /* The 260px flex-basis above is a min-*width* for the row layout;
+       in a column container the same basis becomes a *height*, so it
+       must be reset here rather than inherited. */
+    flex: 1 1 auto;
   }
   .wishlist-form .button-primary {
     width: 100%;

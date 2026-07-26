@@ -35,7 +35,7 @@ the project references.
 
 ## Website
 
-A static marketing/wishlist site lives in `website/` (deployed via Netlify,
+A static marketing/waitlist site lives in `website/` (deployed via Netlify,
 config at the repo-root `netlify.toml`) — see
 [`docs/superpowers/specs/2026-07-25-marketing-website-design.md`](docs/superpowers/specs/2026-07-25-marketing-website-design.md)
 for the design.

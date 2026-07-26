@@ -34,9 +34,9 @@ export default {
           from: fromAddress,
           to: email,
           reply_to: 'zacharylakin0@gmail.com',
-          subject: "You're on the Study Room wishlist",
+          subject: "You're on the Study Room waitlist",
           text: [
-            'Thanks for joining the Study Room wishlist.',
+            'Thanks for joining the Study Room waitlist.',
             '',
             "Study Room is real and working today — engine analysis, accuracy",
             'scoring, move classification, and tactical insights are all built.',
