@@ -348,3 +348,12 @@ but worth revisiting if this area gets touched again:
   can't solve.** Today the only way to see the solution is to play a
   move and fail — which pollutes that card's own SRS history with a
   miss the user didn't really attempt.
+- **`handleMove`'s re-entry guard doesn't cover the in-flight grading
+  window.** `PuzzlesTab.tsx` only blocks a new move attempt once
+  `result !== null` (a verdict has landed) — a fast double-click during
+  `isGrading` (between playing a move and the verdict arriving) could
+  fire `attempt()` twice for the same card. Surfaced during the final
+  review's fix-wave re-review, pre-existing (not introduced by that
+  wave), parked rather than reopening the loop for a narrow race that
+  doesn't corrupt data (worst case: two `submitPuzzleReview` calls for
+  one card, the second's SM-2 update simply overwrites the first's).
