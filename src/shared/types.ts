@@ -263,3 +263,15 @@ export interface PuzzleQueue {
   due: PuzzleCard[]
   nextDueAt: number | null
 }
+
+export type PuzzleOutcome = 'clean' | 'retried' | 'hinted' | 'gaveUp'
+
+export interface PuzzleStats {
+  rating: number
+  currentStreak: number
+  longestStreak: number
+  totalResolved: number
+  totalCleanSolves: number
+  solvedToday: number
+  lastSolvedDate: string
+}
