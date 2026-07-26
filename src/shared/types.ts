@@ -229,3 +229,14 @@ export interface ScanProgress {
 }
 
 export type ScanOutcome = { scanned: number } | { cancelled: true } | { error: string }
+
+export type SrsQuality = 0 | 1 | 2 | 3 | 4 | 5
+
+export interface SrsCardState {
+  cardId: string
+  easeFactor: number
+  intervalDays: number
+  repetitions: number
+  dueDate: number
+  lastReviewedAt: number | null
+}
