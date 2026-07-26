@@ -1,9 +1,13 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { AppSettings, LinkedAccount } from '../../shared/types'
+import type { AppSettings, LinkedAccount, Theme } from '../../shared/types'
 
-const DEFAULT_SETTINGS: AppSettings = { linkedAccount: null }
+const DEFAULT_SETTINGS: AppSettings = { linkedAccount: null, theme: 'dark' }
+
+function parseTheme(value: unknown): Theme {
+  return value === 'light' ? 'light' : 'dark'
+}
 
 function getSettingsPath(): string {
   return join(app.getPath('userData'), 'settings.json')
@@ -16,6 +20,7 @@ export function loadSettings(): AppSettings {
   try {
     const raw = readFileSync(path, 'utf-8')
     const parsed = JSON.parse(raw) as Record<string, unknown>
+    const theme = parseTheme(parsed.theme)
 
     if (parsed.linkedAccount !== undefined) {
       const linkedAccount = parsed.linkedAccount as Partial<LinkedAccount> | null
@@ -24,10 +29,11 @@ export function loadSettings(): AppSettings {
           linkedAccount: {
             username: linkedAccount.username,
             verifiedAt: typeof linkedAccount.verifiedAt === 'number' ? linkedAccount.verifiedAt : null
-          }
+          },
+          theme
         }
       }
-      return { linkedAccount: null }
+      return { linkedAccount: null, theme }
     }
 
     // Legacy pre-account-linking shape: a plain saved username with no proof
@@ -35,13 +41,14 @@ export function loadSettings(): AppSettings {
     // the new shape immediately, so this file only ever needs migrating once.
     if (typeof parsed.chessComUsername === 'string') {
       const migrated: AppSettings = {
-        linkedAccount: { username: parsed.chessComUsername, verifiedAt: null }
+        linkedAccount: { username: parsed.chessComUsername, verifiedAt: null },
+        theme
       }
       writeFileSync(path, JSON.stringify(migrated, null, 2), 'utf-8')
       return migrated
     }
 
-    return { ...DEFAULT_SETTINGS }
+    return { linkedAccount: null, theme }
   } catch {
     return { ...DEFAULT_SETTINGS }
   }

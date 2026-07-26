@@ -26,18 +26,19 @@ describe('settingsStore', () => {
   })
 
   it('returns default settings when no file exists yet', () => {
-    expect(loadSettings()).toEqual({ linkedAccount: null })
+    expect(loadSettings()).toEqual({ linkedAccount: null, theme: 'dark' })
   })
 
   it('returns default settings when the file contains invalid JSON', () => {
     writeFileSync(join(userDataDir, 'settings.json'), '{not valid json', 'utf-8')
-    expect(loadSettings()).toEqual({ linkedAccount: null })
+    expect(loadSettings()).toEqual({ linkedAccount: null, theme: 'dark' })
   })
 
   it('round-trips a saved linked account', () => {
     saveSettings({ linkedAccount: { username: 'hikaru', verifiedAt: 1700000000000 } })
     expect(loadSettings()).toEqual({
-      linkedAccount: { username: 'hikaru', verifiedAt: 1700000000000 }
+      linkedAccount: { username: 'hikaru', verifiedAt: 1700000000000 },
+      theme: 'dark'
     })
   })
 
@@ -47,7 +48,8 @@ describe('settingsStore', () => {
       saveSettings({ linkedAccount: { username: 'magnus', verifiedAt: null } })
     ).not.toThrow()
     expect(loadSettings()).toEqual({
-      linkedAccount: { username: 'magnus', verifiedAt: null }
+      linkedAccount: { username: 'magnus', verifiedAt: null },
+      theme: 'dark'
     })
   })
 
@@ -58,7 +60,8 @@ describe('settingsStore', () => {
       'utf-8'
     )
     expect(loadSettings()).toEqual({
-      linkedAccount: { username: 'zlakin', verifiedAt: null }
+      linkedAccount: { username: 'zlakin', verifiedAt: null },
+      theme: 'dark'
     })
   })
 
@@ -72,7 +75,10 @@ describe('settingsStore', () => {
     loadSettings()
 
     const onDisk = JSON.parse(readFileSync(join(userDataDir, 'settings.json'), 'utf-8'))
-    expect(onDisk).toEqual({ linkedAccount: { username: 'zlakin', verifiedAt: null } })
+    expect(onDisk).toEqual({
+      linkedAccount: { username: 'zlakin', verifiedAt: null },
+      theme: 'dark'
+    })
   })
 
   it('prefers a real linkedAccount over a stale legacy field if somehow both are present', () => {
@@ -85,7 +91,39 @@ describe('settingsStore', () => {
       'utf-8'
     )
     expect(loadSettings()).toEqual({
-      linkedAccount: { username: 'new-username', verifiedAt: 1700000000000 }
+      linkedAccount: { username: 'new-username', verifiedAt: 1700000000000 },
+      theme: 'dark'
     })
+  })
+
+  it('round-trips a saved theme preference', () => {
+    saveSettings({ theme: 'light' })
+    expect(loadSettings()).toEqual({ linkedAccount: null, theme: 'light' })
+  })
+
+  it('defaults theme to dark when the saved file predates the theme field', () => {
+    writeFileSync(
+      join(userDataDir, 'settings.json'),
+      JSON.stringify({ linkedAccount: { username: 'zlakin', verifiedAt: 1700000000000 } }),
+      'utf-8'
+    )
+    expect(loadSettings()).toEqual({
+      linkedAccount: { username: 'zlakin', verifiedAt: 1700000000000 },
+      theme: 'dark'
+    })
+  })
+
+  it('preserves a saved theme when the file has no linkedAccount/chessComUsername field at all', () => {
+    writeFileSync(join(userDataDir, 'settings.json'), JSON.stringify({ theme: 'light' }), 'utf-8')
+    expect(loadSettings()).toEqual({ linkedAccount: null, theme: 'light' })
+  })
+
+  it('rejects an invalid theme value and falls back to dark', () => {
+    writeFileSync(
+      join(userDataDir, 'settings.json'),
+      JSON.stringify({ theme: 'sepia' }),
+      'utf-8'
+    )
+    expect(loadSettings()).toEqual({ linkedAccount: null, theme: 'dark' })
   })
 })

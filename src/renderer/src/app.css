@@ -32,6 +32,44 @@
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
 }
 
+/* Dark counterpart of Study Room - same shape language (radius, shadow
+   style, fonts, and the board's --eval-white/--eval-black, which
+   represent the chessboard's own two sides and don't change with the
+   surrounding UI theme) as the light palette above, only color values
+   change. Neutral scale and --mq-* classification colors are adapted
+   from this project's own prior "Walnut & Ivory" dark theme (see
+   docs/superpowers/specs/2026-07-17-ui-polish-and-move-classification-design.md),
+   already proven to read well on this exact near-black background.
+   --accent uses a brightened green rather than that theme's brass, so
+   the accent color that's now the Study Room brand's signature (the
+   website, the wishlist email, the product name) stays the same hue in
+   both light and dark, not a different color per theme. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #191512;
+  --panel: #221d18;
+  --panel-elevated: #2b241d;
+  --border: #3a312a;
+  --border-strong: #4a3f35;
+  --text: #f1e9dd;
+  --text-muted: #a69a88;
+  --text-faint: #7a6f60;
+  --accent: #4f9d68;
+  --accent-hover: #5cb377;
+  --accent-contrast: #10170f;
+  --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  --mq-brilliant: #22d3ee;
+  --mq-great: #2dd4bf;
+  --mq-best: #4ade80;
+  --mq-excellent: #86d99a;
+  --mq-good: #9fb08c;
+  --mq-book: #a8a29e;
+  --mq-inaccuracy: #fbbf24;
+  --mq-mistake: #fb923c;
+  --mq-blunder: #f0554a;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -126,6 +164,29 @@ textarea:focus {
   font-size: 1.3rem;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+.nav-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
 .app-content {

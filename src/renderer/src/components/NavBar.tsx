@@ -1,5 +1,5 @@
-import { Loader2, BadgeCheck } from 'lucide-react'
-import type { ChessComPlayerStats, LinkedAccount } from '../../../shared/types'
+import { Loader2, BadgeCheck, Sun, Moon } from 'lucide-react'
+import type { ChessComPlayerStats, LinkedAccount, Theme } from '../../../shared/types'
 import { primaryRating } from '../lib/chessComRatingLabels'
 
 export type AppTab = 'analyze' | 'insights'
@@ -12,6 +12,8 @@ interface NavBarProps {
   linkedAccount: LinkedAccount | null
   rating: ChessComPlayerStats | null
   onOpenConnectModal: () => void
+  theme: Theme
+  onToggleTheme: () => void
 }
 
 export function NavBar({
@@ -21,7 +23,9 @@ export function NavBar({
   isScanning,
   linkedAccount,
   rating,
-  onOpenConnectModal
+  onOpenConnectModal,
+  theme,
+  onToggleTheme
 }: NavBarProps): JSX.Element {
   const chipLabel = linkedAccount
     ? linkedAccount.verifiedAt
@@ -49,14 +53,23 @@ export function NavBar({
           {isScanning && <Loader2 size={14} className="spin-icon" />}
         </button>
       </nav>
-      <button
-        className={`account-chip${linkedAccount?.verifiedAt ? ' verified' : ''}`}
-        onClick={onOpenConnectModal}
-      >
-        {linkedAccount?.verifiedAt && <BadgeCheck size={14} className="account-chip-icon" />}
-        {chipLabel}
-        {headlineRating != null && <span className="account-chip-rating">{headlineRating}</span>}
-      </button>
+      <div className="nav-bar-actions">
+        <button
+          className="theme-toggle"
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button
+          className={`account-chip${linkedAccount?.verifiedAt ? ' verified' : ''}`}
+          onClick={onOpenConnectModal}
+        >
+          {linkedAccount?.verifiedAt && <BadgeCheck size={14} className="account-chip-icon" />}
+          {chipLabel}
+          {headlineRating != null && <span className="account-chip-rating">{headlineRating}</span>}
+        </button>
+      </div>
     </header>
   )
 }

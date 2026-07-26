@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc'
-import type { AnalyzedPosition, AnalyzedMove, ChessAPI, ScanProgress } from '../shared/types'
+import type { AnalyzedPosition, AnalyzedMove, ChessAPI, ScanProgress, Theme } from '../shared/types'
 
 const chessAPI: ChessAPI = {
   analyzeGame: (positions: AnalyzedPosition[], depth: number) =>
@@ -15,6 +15,7 @@ const chessAPI: ChessAPI = {
   fetchChessComGames: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComGames, username),
   fetchChessComStats: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.fetchChessComStats, username),
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.getSettings),
+  setTheme: (theme: Theme) => ipcRenderer.invoke(IPC_CHANNELS.setTheme, theme),
   startAccountLink: (username: string) => ipcRenderer.invoke(IPC_CHANNELS.startAccountLink, username),
   verifyAccountLink: () => ipcRenderer.invoke(IPC_CHANNELS.verifyAccountLink),
   disconnectAccount: () => ipcRenderer.invoke(IPC_CHANNELS.disconnectAccount),

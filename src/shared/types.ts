@@ -3,8 +3,11 @@ export interface LinkedAccount {
   verifiedAt: number | null
 }
 
+export type Theme = 'light' | 'dark'
+
 export interface AppSettings {
   linkedAccount: LinkedAccount | null
+  theme: Theme
 }
 
 export interface AnalyzedPosition {
@@ -93,6 +96,7 @@ export interface ChessAPI {
   fetchChessComGames(username: string): Promise<ChessComGameSummary[] | { error: string }>
   fetchChessComStats(username: string): Promise<ChessComPlayerStats | { error: string }>
   getSettings(): Promise<AppSettings>
+  setTheme(theme: Theme): Promise<void>
   startAccountLink(username: string): Promise<{ code: string } | { error: string }>
   verifyAccountLink(): Promise<
     { verified: true; username: string; verifiedAt: number } | { error: string }

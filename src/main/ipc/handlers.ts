@@ -2,12 +2,12 @@ import { ipcMain, dialog, shell } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../../shared/ipc'
-import type { AnalyzedPosition } from '../../shared/types'
+import type { AnalyzedPosition, Theme } from '../../shared/types'
 import { StockfishManager } from '../engine/stockfishManager'
 import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, fetchPlayerStats, ChessComFetchError } from '../chesscom/chessComClient'
-import { loadSettings } from '../settings/settingsStore'
+import { loadSettings, saveSettings } from '../settings/settingsStore'
 import { startLink, verifyLink, disconnectAccount } from '../chesscom/accountLink'
 import { AnalysisRunTracker } from './analysisRunTracker'
 import { runScan } from '../insights/scanRunner'
@@ -105,6 +105,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC_CHANNELS.getSettings, async () => {
     return loadSettings()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.setTheme, async (_event, theme: Theme) => {
+    saveSettings({ theme })
   })
 
   ipcMain.handle(IPC_CHANNELS.startAccountLink, async (_event, username: string) => {

@@ -13,6 +13,7 @@ import { ConnectAccountModal } from './components/ConnectAccountModal'
 import type { ChessComPlayerStats, LinkedAccount } from '../../shared/types'
 import { useGameAnalysis } from './hooks/useGameAnalysis'
 import { useInsightsScan } from './hooks/useInsightsScan'
+import { useTheme } from './hooks/useTheme'
 import { parsePgn, PgnParseError } from '../../shared/pgn'
 import { getPositionAtPly, getMoveAtPly } from './lib/gameNavigation'
 import { formatScore, whiteWinPercent } from './lib/displayEval'
@@ -26,6 +27,7 @@ interface Players {
 function App(): JSX.Element {
   const { state, startAnalysis, cancelAnalysis, reset } = useGameAnalysis()
   const insightsScan = useInsightsScan()
+  const { theme, toggleTheme } = useTheme()
   const [currentPly, setCurrentPly] = useState(0)
   const [pgnError, setPgnError] = useState<string | null>(null)
   const [players, setPlayers] = useState<Players>({ white: 'White', black: 'Black' })
@@ -100,6 +102,8 @@ function App(): JSX.Element {
         linkedAccount={linkedAccount}
         rating={rating}
         onOpenConnectModal={() => setIsConnectModalOpen(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
       {isConnectModalOpen && (
         <ConnectAccountModal
