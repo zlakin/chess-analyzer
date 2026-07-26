@@ -256,6 +256,10 @@ textarea:focus {
 .eval-bar {
   position: relative;
   width: 100%;
+  /* Fallback for the first paint before the ResizeObserver in Board.tsx
+     reports the board's real measured height via inline style - kept in
+     sync with .board-container's max-width below since they're meant to
+     match (the eval bar sits beside a square board). */
   height: 480px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -305,7 +309,12 @@ textarea:focus {
 
 .board-container {
   width: 100%;
-  max-width: 480px;
+  /* Capped by width (480px) as before, but also by available vertical
+     space - a short-but-wide window would otherwise let a square board
+     overflow past the window's bottom edge. ~260px accounts for the
+     nav bar, .app-content padding, the board-nav button row, and
+     MoveDetail beneath the board. */
+  max-width: min(480px, calc(100vh - 260px));
 }
 
 .board-column {

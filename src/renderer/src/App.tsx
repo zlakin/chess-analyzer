@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
 import { NavBar } from './components/NavBar'
 import type { AppTab } from './components/NavBar'
@@ -33,6 +33,8 @@ function App(): JSX.Element {
   const [linkedAccount, setLinkedAccount] = useState<LinkedAccount | null>(null)
   const [rating, setRating] = useState<ChessComPlayerStats | null>(null)
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false)
+  const [boardHeight, setBoardHeight] = useState<number | undefined>(undefined)
+  const handleBoardHeightChange = useCallback((height: number) => setBoardHeight(height), [])
 
   useEffect(() => {
     window.chessAPI.getSettings().then((settings) => setLinkedAccount(settings.linkedAccount))
@@ -147,12 +149,14 @@ function App(): JSX.Element {
                   displayScore={
                     position.evaluation ? formatScore(position.evaluation, position.sideToMove) : '0.00'
                   }
+                  height={boardHeight}
                 />
                 <div className="board-column">
                   <Board
                     fen={position.fen}
                     bestMoveUci={position.bestMoveUci}
                     currentMove={currentMove}
+                    onHeightChange={handleBoardHeightChange}
                   />
                   <div className="board-nav">
                     <button onClick={() => goToPly(0)} disabled={currentPly === 0} title="First move (Home)">

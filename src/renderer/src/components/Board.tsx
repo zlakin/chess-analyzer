@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { Chessboard } from 'react-chessboard'
 import type { Arrow, SquareRenderer } from 'react-chessboard'
 import type { AnalyzedMove } from '../../../shared/types'
@@ -8,13 +8,33 @@ interface BoardProps {
   fen: string
   bestMoveUci: string | null
   currentMove: AnalyzedMove | null
+  onHeightChange?: (height: number) => void
 }
 
 export const Board = memo(function Board({
   fen,
   bestMoveUci,
-  currentMove
+  currentMove,
+  onHeightChange
 }: BoardProps): JSX.Element {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // .board-container is capped by both width and viewport height (see
+  // app.css), so its real rendered size can't be derived from props -
+  // measure it directly and report up so EvalBar (a grid sibling, not a
+  // descendant) can match it instead of relying on the two staying in
+  // sync via a hand-copied CSS pixel value.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !onHeightChange) return
+    const observer = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height
+      if (height) onHeightChange(height)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [onHeightChange])
+
   const arrows: Arrow[] = useMemo(
     () =>
       bestMoveUci
@@ -54,7 +74,7 @@ export const Board = memo(function Board({
   }, [badgeSquare, badgeStyle])
 
   return (
-    <div className="board-container">
+    <div className="board-container" ref={containerRef}>
       <Chessboard
         options={{
           position: fen,
