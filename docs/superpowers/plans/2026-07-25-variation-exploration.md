@@ -493,6 +493,17 @@ export function useVariationExplorer(baseFen: string): {
     })
   }, [currentFen, isExploring])
 
+  // If exploration ends (exitExploration, undo-to-empty, or a real-game
+  // navigation clearing scratchHistory) while a request from the effect
+  // above is still in flight, that effect's own isEvaluating reset never
+  // runs - it's gated behind `if (!isExploring) return`, above, which now
+  // fires for the *next* run instead. Without this, isEvaluating would
+  // stay stuck true indefinitely (or until some later, unrelated
+  // exploration's request happens to resolve).
+  useEffect(() => {
+    if (!isExploring) setIsEvaluating(false)
+  }, [isExploring])
+
   const makeMove = useCallback(
     (from: string, to: string): boolean => {
       const nextFen = tryMove(currentFen, from, to)
