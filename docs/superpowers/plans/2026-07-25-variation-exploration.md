@@ -16,6 +16,7 @@
 - No legal-move-dot highlighting on candidate destinations — out of scope for this pass (see the design spec's Future Ideas).
 - Any real-game navigation (arrow keys, clicking a move-list row, clicking the eval graph) resets exploration back to empty — this must hold regardless of which of those three triggered it.
 - The persistent exploration engine must be reused across calls, not spawned fresh per move (spawning per move would add real per-move latency) — verified by the Task 1 test asserting spawn count, not just "it works."
+- Calls to `evaluateExplorationPosition` must be serialized (queued), never genuinely concurrent against the shared engine — `StockfishManager`'s `pendingLineHandlers` has no per-call identity, so two truly-overlapping calls could cross-contaminate results, not just race on staleness. This was caught by Task 1's own review (a real, load-bearing finding, not a style nit) and folded into this plan before Task 2 was built on top of the interface — verified by the Task 1 test asserting at most one `go depth` command is ever outstanding at a time under `Promise.all`-fired concurrent calls.
 - `pieceType` strings from react-chessboard are `'w'+LETTER`/`'b'+LETTER` (e.g. `'wP'`, `'bQ'`) — confirmed against the installed package's actual source (`fenToPieceCode` in `react-chessboard/dist/index.esm.js`), not assumed.
 - This repo's git workflow: commit straight to `main`, no branches/worktrees/PRs.
 
@@ -61,22 +62,52 @@ async function getEngine(spawnFn: SpawnFn): Promise<StockfishManager> {
   return starting
 }
 
+// StockfishManager's pendingLineHandlers is a shared, unscoped array (see
+// stockfishManager.ts) - it has no per-call request identity, so if two
+// evaluatePosition calls against the SAME instance were genuinely
+// concurrent, a single incoming "bestmove" line could resolve both
+// pending calls at once, each having accumulated whatever info lines
+// arrived from either request - silent cross-contamination, not just a
+// race on staleness. The renderer hook (Task 2) fires a fresh call on
+// every position change, which will overlap in flight if the user moves
+// again before the previous evaluation resolves - so calls against the
+// shared engine must be serialized here, at the one place that owns the
+// shared resource, rather than relying on every caller to avoid
+// overlapping (which the hook's own stale-response guard does NOT do -
+// it only discards an old result after the fact, it doesn't prevent two
+// calls from executing at once).
+let queue: Promise<unknown> = Promise.resolve()
+
 export async function evaluateExplorationPosition(
   fen: string,
   depth: number,
   spawnFn: SpawnFn = spawn as SpawnFn
 ): Promise<PositionEvaluation | { error: string }> {
-  try {
-    const instance = await getEngine(spawnFn)
-    return await instance.evaluatePosition(fen, { depth })
-  } catch (err) {
-    // The persistent engine died (crashed, killed) - drop the cached
-    // reference so the next call starts a fresh one instead of retrying
-    // a dead process forever.
-    engine = null
-    starting = null
-    return { error: `Could not evaluate position: ${(err as Error).message}` }
+  const run = async (): Promise<PositionEvaluation | { error: string }> => {
+    try {
+      const instance = await getEngine(spawnFn)
+      return await instance.evaluatePosition(fen, { depth })
+    } catch (err) {
+      // The persistent engine died (crashed, killed) - drop the cached
+      // reference so the next call starts a fresh one instead of retrying
+      // a dead process forever.
+      engine = null
+      starting = null
+      return { error: `Could not evaluate position: ${(err as Error).message}` }
+    }
   }
+
+  const result = queue.then(run, run)
+  // Keep the queue chain itself always-resolved (never a rejected
+  // promise) regardless of this call's outcome, so a failed call doesn't
+  // permanently break every later call chained after it - `run` already
+  // catches internally and always resolves, this just future-proofs the
+  // chain against that invariant ever changing.
+  queue = result.then(
+    () => undefined,
+    () => undefined
+  )
+  return result
 }
 
 export function stopExplorationEngine(): void {
@@ -169,6 +200,59 @@ describe('explorationEngine', () => {
     expect(spawnCount).toBe(2)
   })
 
+  it('serializes concurrent calls against the shared engine instead of letting them overlap', async () => {
+    // StockfishManager's pendingLineHandlers has no per-call identity - if
+    // two evaluatePosition calls against the same instance were genuinely
+    // concurrent, a single "bestmove" line could resolve both at once with
+    // cross-contaminated data. This proves the queue in
+    // evaluateExplorationPosition prevents that: at most one "go depth"
+    // command may ever be outstanding at a time, even when two calls are
+    // fired without awaiting the first (Promise.all below).
+    let activeGoCommands = 0
+    let maxConcurrentGoCommands = 0
+
+    const spawnFn = (): ChildProcessWithoutNullStreams => {
+      const stdout = new EventEmitter()
+      const fakeProc = Object.assign(new EventEmitter(), {
+        stdout,
+        stderr: new EventEmitter(),
+        stdin: {
+          write: (data: string) => {
+            const command = data.trim()
+            if (command === 'uci') {
+              queueMicrotask(() => stdout.emit('data', Buffer.from('uciok\n')))
+            } else if (command === 'isready') {
+              queueMicrotask(() => stdout.emit('data', Buffer.from('readyok\n')))
+            } else if (command.startsWith('go depth')) {
+              activeGoCommands++
+              maxConcurrentGoCommands = Math.max(maxConcurrentGoCommands, activeGoCommands)
+              // A real delay (not just a microtask), so a second, overlapping
+              // "go depth" - if the serialization queue were missing or
+              // broken - would have a real window to arrive before this one
+              // answers, rather than the test passing by lucky timing.
+              setTimeout(() => {
+                activeGoCommands--
+                stdout.emit('data', Buffer.from('info depth 12 multipv 1 score cp 20 pv e2e4\n'))
+                stdout.emit('data', Buffer.from('bestmove e2e4\n'))
+              }, 10)
+            }
+          }
+        },
+        kill: vi.fn()
+      })
+      return fakeProc as unknown as ChildProcessWithoutNullStreams
+    }
+
+    const [first, second] = await Promise.all([
+      evaluateExplorationPosition('fen-one', 12, spawnFn),
+      evaluateExplorationPosition('fen-two', 12, spawnFn)
+    ])
+
+    expect(maxConcurrentGoCommands).toBe(1)
+    expect('lines' in first).toBe(true)
+    expect('lines' in second).toBe(true)
+  })
+
   it('stopExplorationEngine kills the process and clears the cache so the next call spawns fresh', async () => {
     let spawnCount = 0
     const kills: Array<ReturnType<typeof vi.fn>> = []
@@ -195,7 +279,7 @@ describe('explorationEngine', () => {
 npx vitest run src/main/engine/explorationEngine.test.ts
 ```
 
-Expected: 3 passed, 0 failed.
+Expected: 4 passed, 0 failed.
 
 - [ ] **Step 4: Add the IPC channel to `src/shared/ipc.ts`**
 
@@ -274,7 +358,7 @@ app.on('window-all-closed', () => {
 npm run verify
 ```
 
-Expected: typecheck clean, all tests pass (217 existing + 3 new = 220).
+Expected: typecheck clean, all tests pass (217 existing + 4 new = 221).
 
 - [ ] **Step 10: Commit**
 
@@ -804,7 +888,7 @@ If `whiteWinPercent` in `ExploringBanner.tsx` is flagged as unused (it is, per S
 import { formatScore } from '../lib/displayEval'
 ```
 
-Re-run `npm run verify` until clean. Expected: typecheck clean, all tests pass (220 from Task 1/2, no new tests added in this task — see Testing below).
+Re-run `npm run verify` until clean. Expected: typecheck clean, all tests pass (226 from Task 1/2, no new tests added in this task — see Testing below).
 
 ```bash
 npm run build

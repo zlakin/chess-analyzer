@@ -114,6 +114,18 @@ export function stopExplorationEngine(): void {
 `stopExplorationEngine()` call so the persistent process doesn't outlive
 the app.
 
+**Revision (caught during Task 1's own review, before Task 2 was built
+on top of this interface):** `evaluateExplorationPosition` also
+serializes calls against the shared engine via an internal promise
+queue. `StockfishManager`'s `pendingLineHandlers` has no per-call
+request identity — two genuinely concurrent `evaluatePosition` calls
+against the same instance could resolve off a single incoming
+`bestmove` line with cross-contaminated `info`-line data, not merely
+race on which result is newer. The hook's request-id guard (below)
+prevents a stale result from overwriting a newer one in the UI, but
+does not prevent two calls from executing at once in the first place —
+that has to be prevented at the layer that owns the shared engine.
+
 New IPC channel `evaluatePosition: 'engine:evaluate-position'`
 (`src/shared/ipc.ts`), handler in `src/main/ipc/handlers.ts`:
 ```ts
