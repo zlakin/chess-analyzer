@@ -543,6 +543,11 @@ textarea:focus {
   font-size: 0.9rem;
 }
 
+.insights-last-scan.stale {
+  color: var(--mq-inaccuracy);
+  font-weight: 600;
+}
+
 .insights-scan-progress {
   display: flex;
   align-items: center;

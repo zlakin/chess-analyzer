@@ -1,6 +1,7 @@
 import type { InsightsScanState } from '../hooks/useInsightsScan'
 import { TopFindingsList } from './insights/TopFindingsList'
 import { BucketTabs } from './insights/BucketTabs'
+import { formatRelativeTime } from '../lib/relativeTime'
 
 interface InsightsTabProps {
   state: InsightsScanState
@@ -8,15 +9,22 @@ interface InsightsTabProps {
   cancelScan: () => void
 }
 
+// A scan older than this no longer reflects "recent" play - the last-scan
+// line switches to a warning tone and nudges toward rescanning instead of
+// just reporting a fact the user has to notice is stale themselves.
+const STALE_SCAN_MS = 24 * 60 * 60 * 1000
+
 export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps): JSX.Element {
   const hasReport = state.report !== null && state.report.gamesScanned > 0
+  const lastScanTime = state.report?.lastScanTime ?? null
+  const isStale = lastScanTime !== null && Date.now() - lastScanTime > STALE_SCAN_MS
 
   return (
     <div className="insights-tab">
       <div className="insights-header">
-        <span className="insights-last-scan">
-          {state.report?.lastScanTime
-            ? `Last scanned ${new Date(state.report.lastScanTime).toLocaleString()} · ${state.report.gamesScanned} games`
+        <span className={`insights-last-scan${isStale ? ' stale' : ''}`}>
+          {lastScanTime
+            ? `Scanned ${formatRelativeTime(lastScanTime)} · ${state.report?.gamesScanned} games${isStale ? ' — rescan to catch up' : ''}`
             : 'No scan yet'}
         </span>
 
