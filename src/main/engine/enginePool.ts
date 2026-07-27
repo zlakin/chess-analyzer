@@ -20,7 +20,15 @@ export async function createEnginePool(
   createEngine: () => PooledEngine
 ): Promise<EnginePool> {
   const engines = Array.from({ length: size }, () => createEngine())
-  await Promise.all(engines.map((engine) => engine.start()))
+  try {
+    await Promise.all(engines.map((engine) => engine.start()))
+  } catch (err) {
+    // A partial failure (per-user process limits, EAGAIN, memory pressure) would
+    // otherwise leave the engines that *did* start as orphaned OS processes with
+    // no handle for the caller to clean them up.
+    for (const engine of engines) engine.stop()
+    throw err
+  }
 
   const idle: PooledEngine[] = [...engines]
   const waiters: Array<(engine: PooledEngine) => void> = []

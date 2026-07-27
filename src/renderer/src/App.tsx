@@ -77,6 +77,10 @@ function App(): JSX.Element {
   const explorer = useVariationExplorer(position.fen)
 
   const handleNewGame = (): void => {
+    // "New Game" is offered while an analysis is still running, so cancel it
+    // first - otherwise the whole engine pool keeps churning server-side on a
+    // game the renderer has already thrown away. No-op when nothing is in flight.
+    cancelAnalysis()
     reset()
     setCurrentPly(0)
     explorer.exitExploration()
