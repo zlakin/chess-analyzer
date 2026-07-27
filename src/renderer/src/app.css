@@ -603,6 +603,64 @@ textarea:focus {
   margin-top: 0.75rem;
 }
 
+.puzzle-session-back {
+  margin-bottom: 0.75rem;
+}
+
+.mastery-tree {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mastery-tactic-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 140px;
+}
+
+.mastery-tactic-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.mastery-node {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mastery-node:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mastery-node.mastered {
+  border-color: var(--mq-best);
+  color: var(--mq-best);
+}
+
+.mastery-node-level {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.mastery-node-status {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .insights-report {
   display: flex;
   flex-direction: column;
