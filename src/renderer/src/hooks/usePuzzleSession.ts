@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { PuzzleCard, PuzzleOutcome, PuzzleStats } from '../../../shared/types'
+import type { MasteryNodeKey, MasteryNodeProgress, MasteryPuzzleCard, PuzzleOutcome, PuzzleStats } from '../../../shared/types'
 import { tryMove } from '../lib/tryMove'
 import { gradeAttempt } from '../lib/gradeAttempt'
 import type { CardProgress } from '../lib/puzzleOutcome'
@@ -35,12 +35,12 @@ function progressFor(ref: { current: CardProgress | null }, cardId: string): Car
   return fresh
 }
 
-export function usePuzzleSession(): {
-  queue: PuzzleCard[]
-  nextDueAt: number | null
-  currentCard: PuzzleCard | null
+export function usePuzzleSession(nodeKey: MasteryNodeKey): {
+  queue: MasteryPuzzleCard[]
+  currentCard: MasteryPuzzleCard | null
   sessionTotal: number
   stats: PuzzleStats | null
+  nodeProgress: MasteryNodeProgress | null
   hintUsed: boolean
   attempt: (from: string, to: string) => Promise<PuzzleAttemptResult | { error: string }>
   requestHint: () => void
@@ -48,23 +48,24 @@ export function usePuzzleSession(): {
   next: () => void
   isLoading: boolean
 } {
-  const [queue, setQueue] = useState<PuzzleCard[]>([])
-  const [nextDueAt, setNextDueAt] = useState<number | null>(null)
+  const [queue, setQueue] = useState<MasteryPuzzleCard[]>([])
   const [sessionTotal, setSessionTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<PuzzleStats | null>(null)
+  const [nodeProgressState, setNodeProgressState] = useState<MasteryNodeProgress | null>(null)
   const [hintUsed, setHintUsed] = useState(false)
   const cardProgressRef = useRef<CardProgress | null>(null)
 
   const loadQueue = useCallback(async () => {
     setIsLoading(true)
-    const result = await window.chessAPI.getPuzzleQueue()
-    setQueue(result.due)
-    setNextDueAt(result.nextDueAt)
-    setSessionTotal(result.due.length)
+    const due = await window.chessAPI.getNodeQueue(nodeKey)
+    setQueue(due)
+    setSessionTotal(due.length)
     setIsLoading(false)
-  }, [])
+  }, [nodeKey])
 
+  // A fresh node selection is a fresh session: reload its queue and drop
+  // whatever the previous node's hint/progress state was.
   useEffect(() => {
     void loadQueue()
   }, [loadQueue])
@@ -93,16 +94,18 @@ export function usePuzzleSession(): {
   const submitOutcome = useCallback(
     async (outcome: PuzzleOutcome, classification: 'mistake' | 'blunder'): Promise<void> => {
       try {
-        const updated = await window.chessAPI.submitPuzzleOutcome(outcome, classification)
-        setStats(updated)
+        const updated = await window.chessAPI.submitPuzzleOutcome(outcome, classification, nodeKey)
+        setStats(updated.stats)
+        setNodeProgressState(updated.nodeProgress)
       } catch (err) {
         // Mirrors this hook's existing precedent for submitPuzzleReview below:
-        // the puzzle-rating stats are a motivational extra, not load-bearing -
-        // a failed write there shouldn't block showing the player their result.
+        // the puzzle-rating stats and mastery progress are a motivational
+        // extra, not load-bearing - a failed write there shouldn't block
+        // showing the player their result.
         console.error('Failed to persist puzzle outcome', err)
       }
     },
-    []
+    [nodeKey]
   )
 
   const attempt = useCallback(
@@ -178,7 +181,7 @@ export function usePuzzleSession(): {
 
     // Giving up has to record an SRS review too, not just the gamification
     // outcome: without one, no SRS entry ever exists for this card, so
-    // buildPuzzleQueue keeps synthesizing a fresh due-now state for it and
+    // buildNodeQueue keeps synthesizing a fresh due-now state for it and
     // the same given-up card loops back forever. Quality 0 is SM-2's
     // "couldn't recall it", which puts the card a day out. The claim guard
     // preserves first-resolution-wins - a wrong attempt before the give-up
@@ -204,7 +207,10 @@ export function usePuzzleSession(): {
       // 1 day out (SM-2's minimum interval), so it can never legitimately
       // reappear as due within this same session. Refetching on every
       // card instead would mean re-reading and re-parsing every cached
-      // game record on disk (up to ~100 files) for every single puzzle.
+      // game record on disk for every single puzzle. Because backfill
+      // guarantees an unlocked node always has content, this refetch will
+      // almost always find more cards to continue with rather than
+      // reaching an empty state.
       if (rest.length === 0) void loadQueue()
       return rest
     })
@@ -212,10 +218,10 @@ export function usePuzzleSession(): {
 
   return {
     queue,
-    nextDueAt,
     currentCard,
     sessionTotal,
     stats,
+    nodeProgress: nodeProgressState,
     hintUsed,
     attempt,
     requestHint,
