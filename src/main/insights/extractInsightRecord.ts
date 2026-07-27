@@ -6,7 +6,7 @@ import type {
   TacticType
 } from '../../shared/types'
 import { gamePhaseAt } from './phaseHeuristic'
-import { detectTactics } from '../analysis/tacticDetector'
+import { detectTactics } from '../../shared/analysis/tacticDetector'
 import { computeMoveEvalDelta } from '../../shared/engineMath'
 import {
   resolveTimeControlCategory,
@@ -14,7 +14,7 @@ import {
   isTimePressureMove,
   baseSecondsFromTimeControl
 } from './timeControl'
-import { matchOpeningName } from '../analysis/openingBook'
+import { matchOpeningName } from '../../shared/analysis/openingBook'
 
 const LOSS_RESULTS = new Set(['checkmated', 'resigned', 'timeout', 'abandoned'])
 

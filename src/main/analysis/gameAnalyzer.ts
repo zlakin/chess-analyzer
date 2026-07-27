@@ -1,7 +1,7 @@
 import type { AnalyzedPosition, AnalyzedMove, GameAnalysisResult, PositionEvaluation } from '../../shared/types'
 import { computeMoveEvalDelta } from '../../shared/engineMath'
 import { classifyMove } from './classification'
-import { isBookMove } from './openingBook'
+import { isBookMove } from '../../shared/analysis/openingBook'
 import { moveAccuracy, gameAccuracy } from './accuracy'
 
 export interface EvaluationEngine {

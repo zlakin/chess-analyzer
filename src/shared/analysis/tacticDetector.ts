@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js'
 import type { Color, Move, PieceSymbol, Square } from 'chess.js'
-import { PIECE_VALUES } from '../../shared/pgn'
-import type { TacticType } from '../../shared/types'
+import { PIECE_VALUES } from '../pgn'
+import type { TacticType } from '../types'
 
 const SIGNIFICANT_VALUE = 3 // knight/bishop or greater
 

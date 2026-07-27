@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { classifyMove } from './classification'
 import type { ClassifyMoveInput } from './classification'
-import { isBookMove } from './openingBook'
+import { isBookMove } from '../../shared/analysis/openingBook'
 
 function input(overrides: Partial<ClassifyMoveInput>): ClassifyMoveInput {
   return {
