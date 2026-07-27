@@ -1,31 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
 import { NavBar } from './components/NavBar'
 import type { AppTab } from './components/NavBar'
 import { InsightsTab } from './components/InsightsTab'
 import { PuzzlesTab } from './components/PuzzlesTab'
-import { ImportModal } from './components/ImportModal'
-import { Board } from './components/Board'
-import { EvalBar } from './components/EvalBar'
-import { MoveList } from './components/MoveList'
-import { EvalGraph } from './components/EvalGraph'
-import { GameSummary } from './components/GameSummary'
+import { AnalyzeTab } from './components/AnalyzeTab'
 import { ConnectAccountModal } from './components/ConnectAccountModal'
 import type { ChessComPlayerStats, LinkedAccount } from '../../shared/types'
+import type { Players } from './lib/players'
 import { useGameAnalysis } from './hooks/useGameAnalysis'
 import { useInsightsScan } from './hooks/useInsightsScan'
 import { useTheme } from './hooks/useTheme'
 import { parsePgn, PgnParseError } from '../../shared/pgn'
 import { getPositionAtPly, getMoveAtPly } from './lib/gameNavigation'
-import { formatScore, whiteWinPercent } from './lib/displayEval'
-import { MoveDetail } from './components/MoveDetail'
 import { useVariationExplorer } from './hooks/useVariationExplorer'
-import { ExploringBanner } from './components/ExploringBanner'
-
-interface Players {
-  white: string
-  black: string
-}
 
 function App(): JSX.Element {
   const { state, startAnalysis, cancelAnalysis, reset } = useGameAnalysis()
@@ -133,116 +120,23 @@ function App(): JSX.Element {
       )}
       <main className="app-content">
         {activeTab === 'analyze' && (
-          <>
-            {state.status !== 'idle' && (
-              <div className="analyze-tab-toolbar">
-                <button onClick={handleNewGame}>New Game</button>
-              </div>
-            )}
-
-            {state.status === 'idle' && <ImportModal onGameLoaded={handleGameLoaded} />}
-            {pgnError && <div className="import-error">{pgnError}</div>}
-
-            {state.status === 'analyzing' && (
-              <div className="analysis-progress">
-                <span>
-                  Analyzing... {state.moves.length} / {state.positions.length} moves
-                </span>
-                <progress value={state.moves.length} max={state.positions.length} />
-                <button onClick={cancelAnalysis}>Cancel</button>
-              </div>
-            )}
-
-            {state.status === 'error' && <div className="import-error">{state.error}</div>}
-            {state.status === 'cancelled' && <div className="import-error">Analysis cancelled.</div>}
-
-            {(state.status === 'analyzing' || state.status === 'done') && state.moves.length > 0 && (
-              <div className="analysis-layout">
-                <EvalBar
-                  whiteWinPercent={
-                    explorer.isExploring
-                      ? explorer.evaluation
-                        ? whiteWinPercent(explorer.evaluation, explorer.sideToMove)
-                        : 50
-                      : position.evaluation
-                        ? whiteWinPercent(position.evaluation, position.sideToMove)
-                        : 50
-                  }
-                  displayScore={
-                    explorer.isExploring
-                      ? explorer.evaluation
-                        ? formatScore(explorer.evaluation, explorer.sideToMove)
-                        : '...'
-                      : position.evaluation
-                        ? formatScore(position.evaluation, position.sideToMove)
-                        : '0.00'
-                  }
-                  height={boardHeight}
-                />
-                <div className="board-column">
-                  <Board
-                    fen={explorer.currentFen}
-                    bestMoveUci={explorer.isExploring ? null : position.bestMoveUci}
-                    currentMove={explorer.isExploring ? null : currentMove}
-                    boardOrientation={boardOrientation}
-                    onMove={explorer.makeMove}
-                    onHeightChange={handleBoardHeightChange}
-                  />
-                  <div className="board-nav">
-                    <button onClick={() => goToPly(0)} disabled={currentPly === 0} title="First move (Home)">
-                      <ChevronsLeft size={18} />
-                    </button>
-                    <button
-                      onClick={() => goToPly(currentPly - 1)}
-                      disabled={currentPly === 0}
-                      title="Previous move (←)"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      onClick={() => goToPly(currentPly + 1)}
-                      disabled={currentPly === state.moves.length}
-                      title="Next move (→)"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                    <button
-                      onClick={() => goToPly(state.moves.length)}
-                      disabled={currentPly === state.moves.length}
-                      title="Last move (End)"
-                    >
-                      <ChevronsRight size={18} />
-                    </button>
-                  </div>
-                  {explorer.isExploring ? (
-                    <ExploringBanner
-                      evaluation={explorer.evaluation}
-                      isEvaluating={explorer.isEvaluating}
-                      sideToMove={explorer.sideToMove}
-                      canUndo={true}
-                      onUndo={explorer.undoLastMove}
-                      onExit={explorer.exitExploration}
-                    />
-                  ) : (
-                    <MoveDetail move={currentMove} />
-                  )}
-                </div>
-                <div className="side-panel">
-                  <MoveList moves={state.moves} currentPly={currentPly} onSelectPly={setCurrentPly} />
-                  <EvalGraph moves={state.moves} currentPly={currentPly} onSelectPly={setCurrentPly} />
-                  {state.status === 'done' && state.whiteAccuracy !== null && state.blackAccuracy !== null && (
-                    <GameSummary
-                      moves={state.moves}
-                      whiteAccuracy={state.whiteAccuracy}
-                      blackAccuracy={state.blackAccuracy}
-                      whiteUsername={players.white}
-                      blackUsername={players.black}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-          </>
+          <AnalyzeTab
+            state={state}
+            currentPly={currentPly}
+            position={position}
+            currentMove={currentMove}
+            boardOrientation={boardOrientation}
+            boardHeight={boardHeight}
+            players={players}
+            pgnError={pgnError}
+            explorer={explorer}
+            onGameLoaded={handleGameLoaded}
+            onNewGame={handleNewGame}
+            onCancelAnalysis={cancelAnalysis}
+            onBoardHeightChange={handleBoardHeightChange}
+            goToPly={goToPly}
+            setCurrentPly={setCurrentPly}
+          />
         )}
 
         {activeTab === 'insights' && (
