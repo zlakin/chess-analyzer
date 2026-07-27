@@ -568,6 +568,16 @@ textarea:focus {
   grid-template-columns: minmax(280px, 1fr) minmax(280px, 380px);
 }
 
+/* .board-container's shared max-width formula (Board.tsx, reused by both
+   Analyze and Puzzles) is budgeted for Analyze's header - one PlayerHeader
+   line. A puzzle session stacks a back button, a 4-tile stats bar, and two
+   status lines above the board instead, ~130px taller - without this
+   override the board renders at the same size in both places and overflows
+   the window here, pushing the hint/give-up controls off-screen. */
+.puzzles-tab .board-container {
+  max-width: min(480px, calc(100vh - 420px));
+}
+
 .puzzle-empty-message {
   color: var(--text-muted);
   font-size: 1rem;
