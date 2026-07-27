@@ -1,11 +1,14 @@
 import { ipcMain, dialog, shell } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { readFile } from 'node:fs/promises'
+import { cpus } from 'node:os'
 import { IPC_CHANNELS } from '../../shared/ipc'
 import type { AnalyzedPosition, Theme } from '../../shared/types'
 import { StockfishManager } from '../engine/stockfishManager'
 import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { evaluateExplorationPosition } from '../engine/explorationEngine'
+import { createEnginePool, poolSize } from '../engine/enginePool'
+import type { EnginePool } from '../engine/enginePool'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, fetchPlayerStats, ChessComFetchError } from '../chesscom/chessComClient'
 import { loadSettings, saveSettings } from '../settings/settingsStore'
@@ -35,22 +38,22 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     IPC_CHANNELS.analyzeGame,
     async (_event, positions: AnalyzedPosition[], depth: number) => {
       const runId = analysisRuns.start()
-      const engine = new StockfishManager(getStockfishBinaryPath())
 
       // The whole handler body runs under a single top-level try/finally so
       // that analysisRuns.finish(runId) always runs once the run has
-      // settled -- including when engine.start() itself throws (e.g. the
+      // settled -- including when pool startup itself throws (e.g. the
       // Stockfish binary is missing) -- otherwise the run's entry lingers
       // forever in AnalysisRunTracker's internal map.
       try {
+        let pool: EnginePool
         try {
-          await engine.start()
+          pool = await createEnginePool(poolSize(cpus().length), () => new StockfishManager(getStockfishBinaryPath()))
         } catch (err) {
           return { error: `Could not start Stockfish: ${(err as Error).message}` }
         }
 
         try {
-          return await analyzeGame(positions, engine, {
+          return await analyzeGame(positions, pool, {
             depth: depth || ANALYSIS_DEPTH_DEFAULT,
             isCancelled: () => analysisRuns.isCancelled(runId),
             onMove: (move) => {
@@ -60,7 +63,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
         } catch (err) {
           return { error: `Analysis failed: ${(err as Error).message}` }
         } finally {
-          engine.stop()
+          pool.stop()
         }
       } finally {
         analysisRuns.finish(runId)
