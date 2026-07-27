@@ -205,4 +205,18 @@ describe('synthesizeTopFindings', () => {
     const hungPieceFindings = findings.filter((f) => f.text.includes('hung piece'))
     expect(hungPieceFindings).toHaveLength(1)
   })
+
+  it('collapses a trend finding across buckets even when the reported direction differs', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [
+        bucket({ key: 'overall', totalMistakes: 100, tacticTrends: [{ type: 'fork', olderShare: 0.2, newerShare: 0.6 }] }),
+        bucket({ key: 'bullet', totalMistakes: 20, tacticTrends: [{ type: 'fork', olderShare: 0.6, newerShare: 0.2 }] })
+      ]
+    }
+    const findings = synthesizeTopFindings(report)
+    const forkTrendFindings = findings.filter((f) => f.text.includes('fork') && f.text.includes('often'))
+    expect(forkTrendFindings).toHaveLength(1)
+  })
 })

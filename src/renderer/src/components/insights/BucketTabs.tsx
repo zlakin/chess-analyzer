@@ -10,7 +10,7 @@ interface BucketTabsProps {
 export function BucketTabs({ buckets }: BucketTabsProps): JSX.Element | null {
   const [selectedKey, setSelectedKey] = useState<InsightsBucketKey>('overall')
 
-  const selected = buckets.find((bucket) => bucket.key === selectedKey)
+  const selected = buckets.find((bucket) => bucket.key === selectedKey) ?? buckets[0]
   if (!selected) return null
 
   return (
@@ -19,7 +19,7 @@ export function BucketTabs({ buckets }: BucketTabsProps): JSX.Element | null {
         {buckets.map((bucket) => (
           <button
             key={bucket.key}
-            className={`segmented-control-option${bucket.key === selectedKey ? ' active' : ''}`}
+            className={`segmented-control-option${bucket.key === selected.key ? ' active' : ''}`}
             onClick={() => setSelectedKey(bucket.key)}
           >
             {BUCKET_LABELS[bucket.key]}
