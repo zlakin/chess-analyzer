@@ -43,11 +43,11 @@ describe('parsePgn', () => {
     // theoretical move, but its destination square is attacked by the
     // bishop on b5, and this heuristic treats "non-capturing move to an
     // attacked square" as a potential sacrifice regardless of piece value.
-    // The fix lives in the opening book (src/main/analysis/openingBook.ts),
+    // The fix lives in the opening book (src/shared/analysis/openingBook.ts),
     // which now covers this line so classifyMove tags a6 "book" before it
     // ever reaches the sacrifice/brilliant path -- see
     // src/main/analysis/classification.test.ts and
-    // src/main/analysis/openingBook.test.ts. This test just documents and
+    // src/shared/analysis/openingBook.test.ts. This test just documents and
     // locks in the heuristic's actual (coarse, v1) behavior.
     const positions = parsePgn(SAMPLE_PGN)
     const a6 = positions.find((p) => p.san === 'a6')

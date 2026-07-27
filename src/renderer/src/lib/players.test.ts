@@ -30,4 +30,10 @@ describe('parsePlayers', () => {
     expect(parsePlayers(pgn).whiteElo).toBeNull()
     expect(parsePlayers(pgn).blackElo).toBeNull()
   })
+
+  it('returns null for a malformed/unrated Elo tag (e.g. "?")', () => {
+    const pgn = '[White "a"]\n[Black "b"]\n[WhiteElo "?"]\n[BlackElo "1500"]\n\n1. e4 e5 *'
+    expect(parsePlayers(pgn).whiteElo).toBeNull()
+    expect(parsePlayers(pgn).blackElo).toBe('1500')
+  })
 })

@@ -101,4 +101,22 @@ describe('formatMoveDetail', () => {
     const text = formatMoveDetail(makeMove({ classification: 'blunder' }))
     expect(text).toMatch(/^a3 — Blunder, -\d+% win chance\. Best was Nf3\.$/)
   })
+
+  it('comma-joins multiple tactic tags when the best move enables more than one', () => {
+    // Same fixture as tacticDetector.test.ts's "returns multiple tags"
+    // test: Nd3-e5 both captures the undefended pawn on e5 AND forks the
+    // queen on c6 / rook on g6.
+    const forkAndHangFen = '4k3/8/2q3r1/4p3/8/3N4/8/4K3 w - - 0 1'
+    const text = formatMoveDetail(
+      makeMove({
+        san: 'Kd2',
+        moveUci: 'e1d2',
+        fenBefore: forkAndHangFen,
+        classification: 'blunder',
+        evalBefore: evalWithLine(500, 'd3e5'),
+        evalAfter: evalWithLine(100, 'e8d8')
+      })
+    )
+    expect(text).toMatch(/Best was Nxe5 \(wins a hanging piece, fork\)\.$/)
+  })
 })

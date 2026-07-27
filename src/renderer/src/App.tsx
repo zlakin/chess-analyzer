@@ -85,9 +85,9 @@ function App(): JSX.Element {
     setCurrentPly(Math.max(0, Math.min(ply, state.moves.length)))
   }
 
-  const handleFlipBoard = (): void => {
+  const handleFlipBoard = useCallback((): void => {
     setBoardOrientation((o) => (o === 'white' ? 'black' : 'white'))
-  }
+  }, [])
 
   useEffect(() => {
     if (state.moves.length === 0) return

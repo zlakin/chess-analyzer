@@ -327,6 +327,12 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* .eval-bar is a separate grid sibling of .board-column (see
+     .analysis-layout, align-items: start) - it doesn't move when the
+     board is pushed down by the top PlayerHeader (height 1.25rem) plus
+     .board-column's 0.75rem gap. Offset by the same amount so the bar's
+     top edge lines up with the board's top edge. */
+  margin-top: calc(1.25rem + 0.75rem);
 }
 
 .eval-bar-black {
@@ -391,6 +397,7 @@ textarea:focus {
   gap: 0.4rem;
   width: 100%;
   max-width: 480px;
+  height: 1.25rem;
   font-size: 0.85rem;
   color: var(--text);
 }
@@ -408,6 +415,8 @@ textarea:focus {
 .board-nav {
   display: flex;
   gap: 0.5rem;
+  width: 100%;
+  max-width: 480px;
 }
 
 .board-nav button {
