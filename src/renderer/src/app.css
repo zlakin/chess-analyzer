@@ -639,12 +639,6 @@ textarea:focus {
   color: var(--accent);
 }
 
-.insights-buckets {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1rem;
-}
-
 .time-control-section {
   background: var(--panel-elevated);
   border: 1px solid var(--border);
@@ -652,14 +646,18 @@ textarea:focus {
   padding: 1rem;
 }
 
-.time-control-section h3 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  margin: 0 0 0.25rem;
+.bucket-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.time-control-section-empty {
-  align-self: start;
+.bucket-tabs .time-control-section {
+  max-width: 640px;
+}
+
+.show-more-mistakes {
+  margin-top: 0.5rem;
 }
 
 .bucket-summary {

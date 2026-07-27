@@ -1,6 +1,6 @@
 import type { InsightsScanState } from '../hooks/useInsightsScan'
 import { TopFindingsList } from './insights/TopFindingsList'
-import { TimeControlSection } from './insights/TimeControlSection'
+import { BucketTabs } from './insights/BucketTabs'
 
 interface InsightsTabProps {
   state: InsightsScanState
@@ -47,11 +47,7 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
       {hasReport && state.report && (
         <div className="insights-report">
           <TopFindingsList findings={state.report.topFindings} />
-          <div className="insights-buckets">
-            {state.report.buckets.map((bucket) => (
-              <TimeControlSection key={bucket.key} bucket={bucket} />
-            ))}
-          </div>
+          <BucketTabs buckets={state.report.buckets} />
         </div>
       )}
     </div>

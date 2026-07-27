@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import type { InsightsBucket, TacticType } from '../../../../shared/types'
 import { TACTIC_LABELS } from '../../lib/tacticLabels'
@@ -7,19 +8,25 @@ interface TimeControlSectionProps {
   bucket: InsightsBucket
 }
 
-const BUCKET_LABELS: Record<InsightsBucket['key'], string> = {
-  overall: 'Overall',
-  bullet: 'Bullet',
-  blitz: 'Blitz',
-  rapid: 'Rapid',
-  daily: 'Daily'
+const RECENT_MISTAKES_PREVIEW_COUNT = 5
+
+const CHART_TOOLTIP_STYLE = {
+  contentStyle: {
+    background: 'var(--panel-elevated)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-control)',
+    fontSize: '0.8rem'
+  },
+  labelStyle: { color: 'var(--text)' },
+  itemStyle: { color: 'var(--text-muted)' }
 }
 
 export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Element {
+  const [showAllMistakes, setShowAllMistakes] = useState(false)
+
   if (!bucket.hasEnoughData) {
     return (
       <div className="time-control-section time-control-section-empty">
-        <h3>{BUCKET_LABELS[bucket.key]}</h3>
         <p className="not-enough-data">Not enough games yet ({bucket.gamesCount} scanned).</p>
       </div>
     )
@@ -35,9 +42,13 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
 
+  const visibleMistakes = showAllMistakes
+    ? bucket.recentMistakes
+    : bucket.recentMistakes.slice(0, RECENT_MISTAKES_PREVIEW_COUNT)
+  const hiddenMistakesCount = bucket.recentMistakes.length - visibleMistakes.length
+
   return (
     <div className="time-control-section">
-      <h3>{BUCKET_LABELS[bucket.key]}</h3>
       <p className="bucket-summary">
         {bucket.gamesCount} games &middot; {bucket.totalMistakes} mistakes/blunders &middot;{' '}
         {bucket.timePressureCount} under time pressure
@@ -53,11 +64,12 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
         </div>
       )}
 
-      <ResponsiveContainer width="100%" height={120}>
+      <h4 className="insights-subheading">Mistakes by phase</h4>
+      <ResponsiveContainer width="100%" height={160}>
         <BarChart data={phaseData}>
           <XAxis dataKey="phase" stroke="var(--text-muted)" />
           <YAxis allowDecimals={false} stroke="var(--text-muted)" />
-          <Tooltip />
+          <Tooltip {...CHART_TOOLTIP_STYLE} />
           <Bar dataKey="count" fill="var(--accent)" />
         </BarChart>
       </ResponsiveContainer>
@@ -87,26 +99,37 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
       )}
 
       {bucket.trend.length > 1 && (
-        <ResponsiveContainer width="100%" height={100}>
-          <AreaChart data={bucket.trend}>
-            <XAxis dataKey="gameIndex" hide />
-            <YAxis domain={[0, 100]} hide />
-            <Tooltip formatter={(value) => (typeof value === 'number' ? `${value.toFixed(0)}%` : '')} />
-            <Area
-              type="monotone"
-              dataKey="rollingAccuracy"
-              stroke="var(--accent)"
-              fill="var(--accent)"
-              fillOpacity={0.3}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <>
+          <h4 className="insights-subheading">Accuracy trend</h4>
+          <ResponsiveContainer width="100%" height={120}>
+            <AreaChart data={bucket.trend}>
+              <XAxis dataKey="gameIndex" hide />
+              <YAxis domain={[0, 100]} hide />
+              <Tooltip
+                {...CHART_TOOLTIP_STYLE}
+                formatter={(value) => (typeof value === 'number' ? `${value.toFixed(0)}%` : '')}
+              />
+              <Area
+                type="monotone"
+                dataKey="rollingAccuracy"
+                stroke="var(--accent)"
+                fill="var(--accent)"
+                fillOpacity={0.3}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </>
       )}
 
       {bucket.recentMistakes.length > 0 && (
         <>
           <h4 className="insights-subheading">Recent mistakes</h4>
-          <RecentMistakesList mistakes={bucket.recentMistakes} />
+          <RecentMistakesList mistakes={visibleMistakes} />
+          {hiddenMistakesCount > 0 && (
+            <button className="button-secondary show-more-mistakes" onClick={() => setShowAllMistakes(true)}>
+              Show {hiddenMistakesCount} more
+            </button>
+          )}
         </>
       )}
     </div>
