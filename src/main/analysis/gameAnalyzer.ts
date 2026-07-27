@@ -108,7 +108,19 @@ export async function analyzeGame(
       engine.evaluatePosition(fen, { depth: options.depth }).then(
         (evaluation) => {
           results[i] = evaluation
-          tryFlush()
+          // tryFlush() runs synchronously inside this fulfillment handler,
+          // whose own returned promise is discarded by .then() below - if
+          // it threw (e.g. options.onMove synchronously throwing because
+          // the renderer window was destroyed mid-analysis), that would
+          // otherwise become an unhandled rejection and leave `settled`
+          // false forever, hanging analyzeGame's outer promise. Route any
+          // such throw through the same finishOnce/reject path as a
+          // genuine evaluatePosition rejection.
+          try {
+            tryFlush()
+          } catch (err) {
+            finishOnce(() => reject(err instanceof Error ? err : new Error(String(err))))
+          }
         },
         (err: unknown) => {
           finishOnce(() => reject(err instanceof Error ? err : new Error(String(err))))

@@ -47,6 +47,20 @@ function fakeEngine(): {
   }
 }
 
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
+async function flushMicrotasks(times = 6): Promise<void> {
+  for (let i = 0; i < times; i++) {
+    await Promise.resolve()
+  }
+}
+
 describe('runScan', () => {
   beforeEach(() => {
     fetchRecentGamesMock.mockReset()
@@ -135,6 +149,62 @@ describe('runScan', () => {
 
     await expect(runScan('testuser', { createEngine: crashingEngine })).rejects.toThrow('engine crashed')
     expect(saveGameRecordMock).not.toHaveBeenCalled()
+  })
+
+  it('never sends more than one concurrent evaluatePosition call to the reused engine', async () => {
+    // '1. e4 e5' parses to 2 positions -> analyzeGame (Task 2) dispatches 3
+    // evaluatePosition calls (fenBefore + 2 fenAfter) concurrently for this
+    // one game. Since scanRunner reuses a single raw engine instance across
+    // the whole scan, those 3 calls must be serialized before reaching it --
+    // otherwise a real StockfishManager (which has no per-call request
+    // identity) would silently cross-contaminate results between them.
+    fetchRecentGamesMock.mockResolvedValue([game('g1')])
+
+    const inFlight: Array<{ resolve: (value: PositionEvaluation) => void }> = []
+    let concurrentInFlight = 0
+    let maxConcurrentInFlight = 0
+
+    const engine = {
+      evaluatePosition: async (): Promise<PositionEvaluation> => {
+        concurrentInFlight += 1
+        maxConcurrentInFlight = Math.max(maxConcurrentInFlight, concurrentInFlight)
+        const d = deferred<PositionEvaluation>()
+        inFlight.push(d)
+        const result = await d.promise
+        concurrentInFlight -= 1
+        return result
+      },
+      start: async () => {},
+      stop: () => {}
+    }
+
+    const scanPromise = runScan('testuser', { createEngine: () => engine })
+
+    await flushMicrotasks()
+
+    // If the engine were not serialized, all 3 calls dispatched by
+    // analyzeGame would already be in flight at once here.
+    expect(inFlight).toHaveLength(1)
+    expect(maxConcurrentInFlight).toBe(1)
+
+    const evaluation: PositionEvaluation = {
+      lines: [{ depth: 14, scoreCp: 20, scoreMate: null, moveUci: 'e2e4', pv: ['e2e4'] }]
+    }
+
+    inFlight[0].resolve(evaluation)
+    await flushMicrotasks()
+    expect(inFlight).toHaveLength(2)
+    expect(maxConcurrentInFlight).toBe(1)
+
+    inFlight[1].resolve(evaluation)
+    await flushMicrotasks()
+    expect(inFlight).toHaveLength(3)
+    expect(maxConcurrentInFlight).toBe(1)
+
+    inFlight[2].resolve(evaluation)
+
+    const result = await scanPromise
+    expect(result).toEqual({ scanned: 1 })
   })
 
   it('calls engine.stop() if engine.start() fails', async () => {

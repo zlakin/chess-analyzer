@@ -106,6 +106,12 @@ describe('analyzeGame', () => {
     if ('cancelled' in result) throw new Error('unexpected cancellation')
     expect(seenMoves).toEqual(['e4', 'e5'])
     expect(result.moves.map((m) => m.san)).toEqual(['e4', 'e5'])
+    // Order alone isn't enough to prove correct reassembly - a mispairing
+    // bug (e.g. evalBefore/evalAfter swapped or shifted across positions)
+    // would still pass every assertion above, since classification here
+    // only depends on isBookMove. Pin down the actual eval values too.
+    expect(result.moves[0].evalBefore).toBe(evalsByFen[START_FEN])
+    expect(result.moves[0].evalAfter).toBe(evalsByFen[AFTER_E4_FEN])
   })
 
   it('rejects the whole analysis if any single position fails to evaluate', async () => {

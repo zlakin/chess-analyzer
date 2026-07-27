@@ -14,6 +14,32 @@ export interface ScanRunnerOptions {
   createEngine: () => EvaluationEngine & { start: () => Promise<void>; stop: () => void }
 }
 
+// analyzeGame (Task 2) now dispatches every position in a game concurrently,
+// but scanRunner reuses a single raw engine instance (in production, a bare
+// StockfishManager with no per-call request identity - see
+// explorationEngine.ts's comment on the same hazard) across the entire
+// scan's worth of games. Wrapping it here serializes every call issued
+// through analyzeGame so at most one evaluatePosition is ever in flight
+// against the underlying engine at a time, keeping this exactly as safe as
+// the old sequential analyzeGame loop was. Mirrors the promise-chain idiom
+// explorationEngine.ts already uses for its own shared-engine queue.
+function serialized(engine: EvaluationEngine): EvaluationEngine {
+  let queue: Promise<unknown> = Promise.resolve()
+  return {
+    evaluatePosition(fen, options) {
+      const result = queue.then(() => engine.evaluatePosition(fen, options))
+      // Keep the queue chain itself always-resolved regardless of this
+      // call's outcome, so a failed call doesn't permanently break every
+      // later call chained after it.
+      queue = result.then(
+        () => undefined,
+        () => undefined
+      )
+      return result
+    }
+  }
+}
+
 export async function runScan(username: string, options: ScanRunnerOptions): Promise<ScanOutcome> {
   ensureSchemaVersion()
   ensureUsernameScope(username)
@@ -35,6 +61,10 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
     engine.stop()
     return { error: `Could not start Stockfish: ${(err as Error).message}` }
   }
+
+  // Only the value passed to analyzeGame is serialized - .start()/.stop()
+  // still go directly to the raw engine.
+  const analysisEngine = serialized(engine)
 
   let scanned = 0
   try {
@@ -58,7 +88,7 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
         continue
       }
 
-      const result = await analyzeGame(positions, engine, {
+      const result = await analyzeGame(positions, analysisEngine, {
         depth: SCAN_ANALYSIS_DEPTH,
         isCancelled: options.isCancelled
       })
