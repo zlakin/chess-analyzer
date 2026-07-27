@@ -269,6 +269,40 @@ export interface PuzzleQueue {
   nextDueAt: number | null
 }
 
+export type MasteryLevel = 1 | 2 | 3
+
+export type MasteryNodeKey = string // `${TacticType}:${MasteryLevel}`, e.g. "fork:2"
+
+export interface MasteryNodeProgress {
+  cleanStreak: number
+  mastered: boolean
+}
+
+export interface MasteryNodeState {
+  key: MasteryNodeKey
+  tactic: TacticType
+  level: MasteryLevel
+  unlocked: boolean
+  mastered: boolean
+  cleanStreak: number
+  dueCount: number
+}
+
+export type MasteryTree = MasteryNodeState[]
+
+export interface MasteryPuzzleCard {
+  cardId: string
+  source: 'mistake' | 'backfill'
+  fenBefore: string
+  bestMoveUci: string
+  tactic: TacticType
+  userColor: 'w' | 'b'
+  gameUrl: string | null
+  opponentUsername: string | null
+  endTime: number | null
+  classification: 'mistake' | 'blunder'
+}
+
 export type PuzzleOutcome = 'clean' | 'retried' | 'hinted' | 'gaveUp'
 
 export interface PuzzleStats {
