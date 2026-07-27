@@ -13,6 +13,7 @@ import { useTheme } from './hooks/useTheme'
 import { parsePgn, PgnParseError } from '../../shared/pgn'
 import { getPositionAtPly, getMoveAtPly } from './lib/gameNavigation'
 import { useVariationExplorer } from './hooks/useVariationExplorer'
+import { resolveUserColor } from './lib/userColor'
 
 function App(): JSX.Element {
   const { state, startAnalysis, cancelAnalysis, reset } = useGameAnalysis()
@@ -46,10 +47,13 @@ function App(): JSX.Element {
     setPgnError(null)
     try {
       const positions = parsePgn(pgn)
-      setPlayers({
+      const newPlayers = {
         white: pgn.match(/\[White "([^"]*)"\]/)?.[1] ?? 'White',
         black: pgn.match(/\[Black "([^"]*)"\]/)?.[1] ?? 'Black'
-      })
+      }
+      setPlayers(newPlayers)
+      const detectedColor = resolveUserColor(newPlayers, linkedAccount?.username ?? null)
+      setBoardOrientation(detectedColor === 'b' ? 'black' : 'white')
       setCurrentPly(0)
       explorer.exitExploration()
       void startAnalysis(positions)
@@ -78,6 +82,10 @@ function App(): JSX.Element {
     setCurrentPly(Math.max(0, Math.min(ply, state.moves.length)))
   }
 
+  const handleFlipBoard = (): void => {
+    setBoardOrientation((o) => (o === 'white' ? 'black' : 'white'))
+  }
+
   useEffect(() => {
     if (state.moves.length === 0) return
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -85,11 +93,11 @@ function App(): JSX.Element {
       else if (e.key === 'ArrowRight') goToPly(currentPly + 1)
       else if (e.key === 'Home') goToPly(0)
       else if (e.key === 'End') goToPly(state.moves.length)
-      else if (e.key === 'f' || e.key === 'F') setBoardOrientation((o) => (o === 'white' ? 'black' : 'white'))
+      else if (e.key === 'f' || e.key === 'F') handleFlipBoard()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentPly, state.moves.length])
+  }, [currentPly, state.moves.length, handleFlipBoard])
 
   return (
     <div className="app">
@@ -132,6 +140,7 @@ function App(): JSX.Element {
             explorer={explorer}
             onGameLoaded={handleGameLoaded}
             onNewGame={handleNewGame}
+            onFlipBoard={handleFlipBoard}
             onCancelAnalysis={cancelAnalysis}
             onBoardHeightChange={handleBoardHeightChange}
             goToPly={goToPly}

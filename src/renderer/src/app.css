@@ -398,6 +398,10 @@ textarea:focus {
   justify-content: center;
 }
 
+.board-nav-flip {
+  margin-left: auto;
+}
+
 .side-panel {
   display: flex;
   flex-direction: column;

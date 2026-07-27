@@ -1,4 +1,4 @@
-import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react'
+import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, FlipVertical2 } from 'lucide-react'
 import type { AnalyzedMove } from '../../../shared/types'
 import type { AnalysisState } from '../lib/analysisReducer'
 import type { PositionAtPly } from '../lib/gameNavigation'
@@ -26,6 +26,7 @@ interface AnalyzeTabProps {
   explorer: ReturnType<typeof useVariationExplorer>
   onGameLoaded: (pgn: string) => void
   onNewGame: () => void
+  onFlipBoard: () => void
   onCancelAnalysis: () => void
   onBoardHeightChange: (height: number) => void
   goToPly: (ply: number) => void
@@ -44,6 +45,7 @@ export function AnalyzeTab({
   explorer,
   onGameLoaded,
   onNewGame,
+  onFlipBoard,
   onCancelAnalysis,
   onBoardHeightChange,
   goToPly,
@@ -129,6 +131,9 @@ export function AnalyzeTab({
                 title="Last move (End)"
               >
                 <ChevronsRight size={18} />
+              </button>
+              <button className="board-nav-flip" onClick={onFlipBoard} title="Flip board (F)">
+                <FlipVertical2 size={18} />
               </button>
             </div>
             {explorer.isExploring ? (
