@@ -159,10 +159,50 @@ describe('synthesizeTopFindings', () => {
     const report: Omit<InsightsReport, 'topFindings'> = {
       gamesScanned: 20,
       lastScanTime: null,
-      buckets: [bucket({ timePressureCount: 20 }), bucket({ key: 'bullet', timePressureCount: 3 })]
+      buckets: [
+        bucket({ timePressureCount: 20 }),
+        bucket({
+          key: 'bullet',
+          totalMistakes: 3,
+          phaseBreakdown: { opening: 1, middlegame: 1, endgame: 1 },
+          tacticBreakdown: { ...emptyTacticBreakdown(), fork: 3 }
+        })
+      ]
     }
     const findings = synthesizeTopFindings(report)
-    const timePressureFindings = findings.filter((f) => f.text.includes('little time'))
-    expect(timePressureFindings[0].significance).toBeGreaterThan(timePressureFindings[1].significance)
+    expect(findings[0].text).toContain('little time')
+    const forkFinding = findings.find((f) => f.text.includes('fork'))
+    expect(forkFinding).toBeDefined()
+    expect(findings[0].significance).toBeGreaterThan(forkFinding!.significance)
+  })
+
+  it('collapses the same phase finding across buckets, keeping only the highest-significance instance', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [
+        bucket({ key: 'overall', totalMistakes: 100, phaseBreakdown: { opening: 10, middlegame: 64, endgame: 26 } }),
+        bucket({ key: 'bullet', totalMistakes: 20, phaseBreakdown: { opening: 2, middlegame: 14, endgame: 4 } })
+      ]
+    }
+    const findings = synthesizeTopFindings(report)
+    const middlegameFindings = findings.filter((f) => f.text.includes('middlegame'))
+    expect(middlegameFindings).toHaveLength(1)
+    expect(middlegameFindings[0].text).toContain('64 of 100')
+    expect(middlegameFindings[0].text).not.toContain('in bullet')
+  })
+
+  it('collapses the same tactic finding across buckets too, keeping the strongest one', () => {
+    const report: Omit<InsightsReport, 'topFindings'> = {
+      gamesScanned: 20,
+      lastScanTime: null,
+      buckets: [
+        bucket({ key: 'overall', tacticBreakdown: { ...emptyTacticBreakdown(), hung_piece: 10 } }),
+        bucket({ key: 'rapid', totalMistakes: 5, tacticBreakdown: { ...emptyTacticBreakdown(), hung_piece: 8 } })
+      ]
+    }
+    const findings = synthesizeTopFindings(report)
+    const hungPieceFindings = findings.filter((f) => f.text.includes('hung piece'))
+    expect(hungPieceFindings).toHaveLength(1)
   })
 })
