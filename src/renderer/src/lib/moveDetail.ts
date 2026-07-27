@@ -1,7 +1,9 @@
 import { Chess } from 'chess.js'
 import type { AnalyzedMove } from '../../../shared/types'
 import { computeMoveEvalDelta, cpToWinPercent } from '../../../shared/engineMath'
+import { detectTactics } from '../../../shared/analysis/tacticDetector'
 import { MOVE_CLASSIFICATION_STYLE } from './moveClassificationStyle'
+import { TACTIC_LABELS } from './tacticLabels'
 
 export function sanForUci(fen: string, uci: string): string | null {
   const chess = new Chess(fen)
@@ -31,7 +33,13 @@ export function formatMoveDetail(move: AnalyzedMove | null): string | null {
   if (!delta.isBestMove) {
     const bestUci = move.evalBefore.lines[0]?.moveUci
     const bestSan = bestUci ? sanForUci(move.fenBefore, bestUci) : null
-    if (bestSan) text += ` Best was ${bestSan}.`
+    if (bestSan) {
+      const isMistakeOrBlunder = move.classification === 'mistake' || move.classification === 'blunder'
+      const tactics = isMistakeOrBlunder && bestUci ? detectTactics(move.fenBefore, bestUci) : []
+      const tacticSuffix =
+        tactics.length > 0 ? ` (${tactics.map((t) => TACTIC_LABELS[t].toLowerCase()).join(', ')})` : ''
+      text += ` Best was ${bestSan}${tacticSuffix}.`
+    }
   }
 
   return text

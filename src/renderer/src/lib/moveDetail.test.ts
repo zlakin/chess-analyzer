@@ -63,4 +63,42 @@ describe('formatMoveDetail', () => {
     expect(text).not.toContain('Best was')
     expect(text).toMatch(/^Nf3 — Best, /)
   })
+
+  it('appends a parenthetical tactic tag when the best move (not the move played) enables one, for a blunder', () => {
+    // Same fork fixture as tacticDetector.test.ts: Nd3-e5 forks the queen on
+    // c6 and the rook on g6 - Kd2 ignores it entirely.
+    const forkFen = '4k3/8/2q3r1/8/8/3N4/8/4K3 w - - 0 1'
+    const text = formatMoveDetail(
+      makeMove({
+        san: 'Kd2',
+        moveUci: 'e1d2',
+        fenBefore: forkFen,
+        classification: 'blunder',
+        evalBefore: evalWithLine(500, 'd3e5'),
+        evalAfter: evalWithLine(100, 'e8d8')
+      })
+    )
+    expect(text).toMatch(/^Kd2 — Blunder, -\d+% win chance\. Best was Ne5 \(fork\)\.$/)
+  })
+
+  it('omits the tactic tag for an inaccuracy even when the best move would enable one', () => {
+    const forkFen = '4k3/8/2q3r1/8/8/3N4/8/4K3 w - - 0 1'
+    const text = formatMoveDetail(
+      makeMove({
+        san: 'Kd2',
+        moveUci: 'e1d2',
+        fenBefore: forkFen,
+        classification: 'inaccuracy',
+        evalBefore: evalWithLine(50, 'd3e5'),
+        evalAfter: evalWithLine(10, 'e8d8')
+      })
+    )
+    expect(text).not.toContain('(fork)')
+    expect(text).toMatch(/Best was Ne5\.$/)
+  })
+
+  it('omits the parenthetical when the best move enables no detected tactic, even for a blunder', () => {
+    const text = formatMoveDetail(makeMove({ classification: 'blunder' }))
+    expect(text).toMatch(/^a3 — Blunder, -\d+% win chance\. Best was Nf3\.$/)
+  })
 })
