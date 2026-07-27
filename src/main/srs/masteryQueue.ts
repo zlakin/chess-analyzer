@@ -77,7 +77,17 @@ export function buildNodeQueue(
 
   if (cards.length < MIN_NODE_QUEUE_SIZE) {
     const needed = MIN_NODE_QUEUE_SIZE - cards.length
-    cards.push(...backfillCardsFor(tactic, level).slice(0, needed))
+    // Sort the backfill pool itself by due-date before slicing, so a
+    // previously-served (and since solved) puzzle - whose dueDate SM-2
+    // pushed out at least a day - rolls out of the prefix and an
+    // untouched one (dueDate === now, from newCardState) rolls in. Without
+    // this, .slice(0, needed) would always take the same fixed prefix of
+    // the 250-item bucket regardless of what the player has already seen.
+    const pool = backfillCardsFor(tactic, level)
+      .map((card) => ({ card, state: srsState[card.cardId] ?? newCardState(card.cardId, now) }))
+      .sort((a, b) => a.state.dueDate - b.state.dueDate)
+      .map(({ card }) => card)
+    cards.push(...pool.slice(0, needed))
   }
 
   // Cards already past their SM-2 due-date sort first within the session;

@@ -81,6 +81,31 @@ describe('buildNodeQueue', () => {
     expect(queue.every((c) => c.source === 'backfill')).toBe(true)
   })
 
+  it('rotates the backfill pool once the first batch is marked solved, instead of re-serving the same prefix', () => {
+    const now = 5000
+    const oneDay = 24 * 60 * 60 * 1000
+
+    const firstBatch = buildNodeQueue('fork:1', [], {}, {}, now)
+    const firstIds = firstBatch.map((c) => c.cardId)
+
+    const solvedState: Record<string, SrsCardState> = {}
+    for (const cardId of firstIds) {
+      solvedState[cardId] = {
+        cardId,
+        easeFactor: 2.5,
+        intervalDays: 1,
+        repetitions: 1,
+        dueDate: now + oneDay,
+        lastReviewedAt: now
+      }
+    }
+
+    const secondBatch = buildNodeQueue('fork:1', [], {}, solvedState, now)
+    const secondIds = secondBatch.map((c) => c.cardId)
+
+    expect(secondIds.some((id) => !firstIds.includes(id))).toBe(true)
+  })
+
   it('sorts cards with a past due-date before not-yet-due cards', () => {
     const records = [mistakeRecord('g1', 10, 'fork'), mistakeRecord('g2', 20, 'fork')]
     const state = {

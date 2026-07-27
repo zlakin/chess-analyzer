@@ -3,7 +3,8 @@ import type { PuzzleAttemptResult } from '../hooks/usePuzzleSession'
 import { usePuzzleSession } from '../hooks/usePuzzleSession'
 import { tryMove } from '../lib/tryMove'
 import { Board } from './Board'
-import type { MasteryNodeKey } from '../../../shared/types'
+import type { MasteryNodeKey, MasteryNodeState } from '../../../shared/types'
+import { TACTIC_LABELS } from '../lib/tacticLabels'
 
 interface TaggedAttempt {
   cardId: string
@@ -17,10 +18,19 @@ interface TaggedResult {
 
 interface PuzzleSessionViewProps {
   nodeKey: MasteryNodeKey
+  // The tree already knows this node's tactic/level/streak/mastered from its
+  // last fetch - seeding the session with it means the heading and streak
+  // line have something real to show before the hook's own nodeProgress
+  // (which only exists once a puzzle in *this* session resolves) arrives.
+  initialNodeState: MasteryNodeState
   onBack: () => void
 }
 
-export function PuzzleSessionView({ nodeKey, onBack }: PuzzleSessionViewProps): JSX.Element {
+export function PuzzleSessionView({
+  nodeKey,
+  initialNodeState,
+  onBack
+}: PuzzleSessionViewProps): JSX.Element {
   const {
     queue,
     currentCard,
@@ -80,6 +90,13 @@ export function PuzzleSessionView({ nodeKey, onBack }: PuzzleSessionViewProps): 
     stats && stats.totalResolved > 0
       ? `${Math.round((stats.totalCleanSolves / stats.totalResolved) * 100)}%`
       : '—'
+  // The hook's nodeProgress starts null and only fills in once a puzzle in
+  // *this* session resolves - until then, fall back to the tree's
+  // already-known state for this node so the streak line is never blank.
+  const displayProgress = nodeProgress ?? {
+    cleanStreak: initialNodeState.cleanStreak,
+    mastered: initialNodeState.mastered
+  }
 
   const handleMove = (from: string, to: string): boolean => {
     // Already resolved, waiting on Retry, or still awaiting the engine on a
@@ -119,6 +136,9 @@ export function PuzzleSessionView({ nodeKey, onBack }: PuzzleSessionViewProps): 
   return (
     <div className="puzzles-tab">
       {backButton}
+      <h3 className="mastery-tactic-heading">
+        {TACTIC_LABELS[initialNodeState.tactic]} · Level {initialNodeState.level}
+      </h3>
       {stats && (
         <div className="puzzle-stats-bar">
           <div className="puzzle-stat-tile">
@@ -139,11 +159,9 @@ export function PuzzleSessionView({ nodeKey, onBack }: PuzzleSessionViewProps): 
           </div>
         </div>
       )}
-      {nodeProgress && (
-        <p className="puzzle-status-panel">
-          {nodeProgress.mastered ? 'Node mastered!' : `Mastery streak: ${nodeProgress.cleanStreak}/5`}
-        </p>
-      )}
+      <p className="puzzle-status-panel">
+        {displayProgress.mastered ? 'Node mastered!' : `Mastery streak: ${displayProgress.cleanStreak}/5`}
+      </p>
       <p className="puzzle-status-panel">{`Puzzle ${position} of ${sessionTotal}`}</p>
       <div className="analysis-layout">
         <div className="board-column">

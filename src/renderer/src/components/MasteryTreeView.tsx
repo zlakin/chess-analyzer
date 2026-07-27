@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { MasteryNodeKey, MasteryTree } from '../../../shared/types'
+import type { MasteryNodeState, MasteryTree } from '../../../shared/types'
 import { TACTIC_TYPES } from '../../../shared/types'
 import { TACTIC_LABELS } from '../lib/tacticLabels'
 
 interface MasteryTreeViewProps {
-  onSelectNode: (key: MasteryNodeKey) => void
+  onSelectNode: (node: MasteryNodeState) => void
 }
 
 export function MasteryTreeView({ onSelectNode }: MasteryTreeViewProps): JSX.Element {
@@ -29,7 +29,7 @@ export function MasteryTreeView({ onSelectNode }: MasteryTreeViewProps): JSX.Ele
                   key={node.key}
                   className={`mastery-node${node.mastered ? ' mastered' : ''}${!node.unlocked ? ' locked' : ''}`}
                   disabled={!node.unlocked}
-                  onClick={() => onSelectNode(node.key)}
+                  onClick={() => onSelectNode(node)}
                 >
                   <span className="mastery-node-level">Level {node.level}</span>
                   <span className="mastery-node-status">
