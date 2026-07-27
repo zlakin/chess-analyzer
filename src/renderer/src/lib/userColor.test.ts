@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolveUserColor } from './userColor'
 
-const players = { white: 'zlakin', black: 'opponent123' }
+const players = { white: 'zlakin', black: 'opponent123', whiteElo: null, blackElo: null }
 
 describe('resolveUserColor', () => {
   it('returns "w" when the username matches the white player, case-insensitively', () => {
@@ -21,6 +21,11 @@ describe('resolveUserColor', () => {
   })
 
   it('trims surrounding whitespace before comparing', () => {
-    expect(resolveUserColor({ white: ' zlakin ', black: 'opponent123' }, 'zlakin')).toBe('w')
+    expect(
+      resolveUserColor(
+        { white: ' zlakin ', black: 'opponent123', whiteElo: null, blackElo: null },
+        'zlakin'
+      )
+    ).toBe('w')
   })
 })

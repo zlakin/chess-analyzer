@@ -7,6 +7,7 @@ import { AnalyzeTab } from './components/AnalyzeTab'
 import { ConnectAccountModal } from './components/ConnectAccountModal'
 import type { ChessComPlayerStats, LinkedAccount } from '../../shared/types'
 import type { Players } from './lib/players'
+import { parsePlayers } from './lib/players'
 import { useGameAnalysis } from './hooks/useGameAnalysis'
 import { useInsightsScan } from './hooks/useInsightsScan'
 import { useTheme } from './hooks/useTheme'
@@ -21,7 +22,12 @@ function App(): JSX.Element {
   const { theme, toggleTheme } = useTheme()
   const [currentPly, setCurrentPly] = useState(0)
   const [pgnError, setPgnError] = useState<string | null>(null)
-  const [players, setPlayers] = useState<Players>({ white: 'White', black: 'Black' })
+  const [players, setPlayers] = useState<Players>({
+    white: 'White',
+    black: 'Black',
+    whiteElo: null,
+    blackElo: null
+  })
   const [activeTab, setActiveTab] = useState<AppTab>('analyze')
   const [linkedAccount, setLinkedAccount] = useState<LinkedAccount | null>(null)
   const [rating, setRating] = useState<ChessComPlayerStats | null>(null)
@@ -47,10 +53,7 @@ function App(): JSX.Element {
     setPgnError(null)
     try {
       const positions = parsePgn(pgn)
-      const newPlayers = {
-        white: pgn.match(/\[White "([^"]*)"\]/)?.[1] ?? 'White',
-        black: pgn.match(/\[Black "([^"]*)"\]/)?.[1] ?? 'Black'
-      }
+      const newPlayers = parsePlayers(pgn)
       setPlayers(newPlayers)
       const detectedColor = resolveUserColor(newPlayers, linkedAccount?.username ?? null)
       setBoardOrientation(detectedColor === 'b' ? 'black' : 'white')

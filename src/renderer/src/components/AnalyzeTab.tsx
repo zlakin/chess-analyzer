@@ -12,6 +12,7 @@ import { EvalGraph } from './EvalGraph'
 import { GameSummary } from './GameSummary'
 import { MoveDetail } from './MoveDetail'
 import { ExploringBanner } from './ExploringBanner'
+import { PlayerHeader } from './PlayerHeader'
 import { formatScore, whiteWinPercent } from '../lib/displayEval'
 
 interface AnalyzeTabProps {
@@ -51,6 +52,15 @@ export function AnalyzeTab({
   goToPly,
   setCurrentPly
 }: AnalyzeTabProps): JSX.Element {
+  const topPlayer =
+    boardOrientation === 'white'
+      ? { name: players.black, elo: players.blackElo }
+      : { name: players.white, elo: players.whiteElo }
+  const bottomPlayer =
+    boardOrientation === 'white'
+      ? { name: players.white, elo: players.whiteElo }
+      : { name: players.black, elo: players.blackElo }
+
   return (
     <>
       {state.status !== 'idle' && (
@@ -99,6 +109,7 @@ export function AnalyzeTab({
             height={boardHeight}
           />
           <div className="board-column">
+            <PlayerHeader name={topPlayer.name} elo={topPlayer.elo} />
             <Board
               fen={explorer.currentFen}
               bestMoveUci={explorer.isExploring ? null : position.bestMoveUci}
@@ -107,6 +118,7 @@ export function AnalyzeTab({
               onMove={explorer.makeMove}
               onHeightChange={onBoardHeightChange}
             />
+            <PlayerHeader name={bottomPlayer.name} elo={bottomPlayer.elo} />
             <div className="board-nav">
               <button onClick={() => goToPly(0)} disabled={currentPly === 0} title="First move (Home)">
                 <ChevronsLeft size={18} />
