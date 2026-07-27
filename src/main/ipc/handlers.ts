@@ -20,10 +20,12 @@ import { buildInsightsReport } from '../insights/reportAggregator'
 import { synthesizeTopFindings } from '../insights/topFindings'
 import { loadSrsState, saveSrsState } from '../srs/srsStore'
 import { newCardState, nextCardState } from '../srs/sm2'
-import { buildPuzzleQueue } from '../srs/puzzleQueue'
+import { buildMasteryTree, buildNodeQueue } from '../srs/masteryQueue'
+import { loadMasteryState, saveMasteryState } from '../srs/masteryStore'
+import { nodeProgress, nextMasteryProgress } from '../srs/masteryTree'
 import { loadPuzzleStats, savePuzzleStats } from '../srs/puzzleStatsStore'
 import { nextPuzzleStats, localDateString } from '../srs/puzzleRating'
-import type { PuzzleOutcome, SrsQuality } from '../../shared/types'
+import type { MasteryNodeKey, PuzzleOutcome, SrsQuality } from '../../shared/types'
 
 const ANALYSIS_DEPTH_DEFAULT = 18
 
@@ -176,11 +178,20 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return { ...partialReport, topFindings: synthesizeTopFindings(partialReport) }
   })
 
-  ipcMain.handle(IPC_CHANNELS.getPuzzleQueue, async () => {
+  ipcMain.handle(IPC_CHANNELS.getMasteryTree, async () => {
     ensureSchemaVersion()
     const records = loadAllGameRecords()
+    const masteryState = loadMasteryState()
     const srsState = loadSrsState()
-    return buildPuzzleQueue(records, srsState, Date.now())
+    return buildMasteryTree(records, masteryState, srsState, Date.now())
+  })
+
+  ipcMain.handle(IPC_CHANNELS.getNodeQueue, async (_event, key: MasteryNodeKey) => {
+    ensureSchemaVersion()
+    const records = loadAllGameRecords()
+    const masteryState = loadMasteryState()
+    const srsState = loadSrsState()
+    return buildNodeQueue(key, records, masteryState, srsState, Date.now())
   })
 
   ipcMain.handle(
@@ -208,11 +219,21 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(
     IPC_CHANNELS.submitPuzzleOutcome,
-    async (_event, outcome: PuzzleOutcome, classification: 'mistake' | 'blunder') => {
+    async (
+      _event,
+      outcome: PuzzleOutcome,
+      classification: 'mistake' | 'blunder',
+      nodeKey: MasteryNodeKey
+    ) => {
       const stats = loadPuzzleStats()
-      const updated = nextPuzzleStats(stats, outcome, classification, Date.now())
-      savePuzzleStats(updated)
-      return updated
+      const updatedStats = nextPuzzleStats(stats, outcome, classification, Date.now())
+      savePuzzleStats(updatedStats)
+
+      const masteryState = loadMasteryState()
+      const updatedProgress = nextMasteryProgress(nodeProgress(masteryState, nodeKey), outcome)
+      saveMasteryState({ ...masteryState, [nodeKey]: updatedProgress })
+
+      return { stats: updatedStats, nodeProgress: updatedProgress }
     }
   )
 }

@@ -8,7 +8,11 @@ import type {
   Theme,
   SrsQuality,
   PuzzleOutcome,
-  PuzzleStats
+  PuzzleStats,
+  MasteryNodeKey,
+  MasteryNodeProgress,
+  MasteryTree,
+  MasteryPuzzleCard
 } from '../shared/types'
 
 const chessAPI: ChessAPI = {
@@ -38,12 +42,16 @@ const chessAPI: ChessAPI = {
   },
   cancelScan: () => ipcRenderer.send(IPC_CHANNELS.cancelScan),
   getInsightsReport: () => ipcRenderer.invoke(IPC_CHANNELS.getInsightsReport),
-  getPuzzleQueue: () => ipcRenderer.invoke(IPC_CHANNELS.getPuzzleQueue),
+  getMasteryTree: () => ipcRenderer.invoke(IPC_CHANNELS.getMasteryTree),
+  getNodeQueue: (key: MasteryNodeKey) => ipcRenderer.invoke(IPC_CHANNELS.getNodeQueue, key),
   submitPuzzleReview: (cardId: string, quality: SrsQuality) =>
     ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleReview, cardId, quality),
   getPuzzleStats: () => ipcRenderer.invoke(IPC_CHANNELS.getPuzzleStats),
-  submitPuzzleOutcome: (outcome: PuzzleOutcome, classification: 'mistake' | 'blunder') =>
-    ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleOutcome, outcome, classification)
+  submitPuzzleOutcome: (
+    outcome: PuzzleOutcome,
+    classification: 'mistake' | 'blunder',
+    nodeKey: MasteryNodeKey
+  ) => ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleOutcome, outcome, classification, nodeKey)
 }
 
 contextBridge.exposeInMainWorld('chessAPI', chessAPI)
