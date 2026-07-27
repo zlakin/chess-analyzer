@@ -28,13 +28,15 @@ export function RecentMistakesList({ mistakes }: RecentMistakesListProps): JSX.E
               {`${new Date(mistake.endTime * 1000).toLocaleDateString()} · vs ${mistake.opponentUsername} · move ${Math.ceil(mistake.ply / 2)} · ${PHASE_LABELS[mistake.phase]}`}
             </span>
             <span className="recent-mistake-tags">
-              {tags.length === 0
-                ? 'Positional'
-                : tags.map((tag) => (
-                    <span key={tag} className="recent-mistake-tag">
-                      {TACTIC_LABELS[tag]}
-                    </span>
-                  ))}
+              {tags.length === 0 ? (
+                <span className="recent-mistake-tag">Positional</span>
+              ) : (
+                tags.map((tag) => (
+                  <span key={tag} className="recent-mistake-tag">
+                    {TACTIC_LABELS[tag]}
+                  </span>
+                ))
+              )}
             </span>
           </li>
         )
