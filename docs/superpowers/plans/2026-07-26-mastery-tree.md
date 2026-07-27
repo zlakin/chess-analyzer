@@ -13,7 +13,7 @@
 - SM-2 (`sm2.ts`), Puzzle Rating (`puzzleRating.ts`/`puzzleStatsStore.ts`), and the retry/hint/give-up claim-guard logic (`puzzleOutcome.ts`) do not change in this plan — Mastery Tree is a layer on top of them, not a replacement.
 - Due-dates never gate whether a node can be practiced — only which of its cards sort first within a session.
 - Mastery is 5 consecutive `'clean'` outcomes per node; unlocking is strictly sequential within one tactic's 3 levels, with all 6 tactics' Level 1 unlocked from the start.
-- The old flat queue (`src/main/srs/puzzleQueue.ts` + its test, the `getPuzzleQueue` IPC channel/handler/preload entry, the `PuzzleCard`/`PuzzleQueue` shared types) is deleted once nothing references it — verified via grep before this plan's tasks began; no other file depends on it.
+- The old flat queue (`src/main/srs/puzzleQueue.ts` + its test, the `getPuzzleQueue` IPC channel/handler/preload entry, the `PuzzleCard`/`PuzzleQueue` shared types) is deleted in Task 4, once nothing *by the end of this plan* references it. One file still calls the old APIs at the moment Task 4 deletes them — `src/renderer/src/hooks/usePuzzleSession.ts`, rewritten in Task 5 — so Task 4 deliberately leaves that one file typecheck-broken, exactly as Task 5 deliberately leaves `PuzzlesTab.tsx` broken until Task 6. The pre-plan grep confirmed no *other* file depends on the flat queue.
 - This repo's git workflow: commit straight to `main` (no branches/worktrees/PRs).
 
 ---
@@ -974,7 +974,7 @@ rm src/main/srs/puzzleQueue.ts src/main/srs/puzzleQueue.test.ts
 npm run verify
 ```
 
-Expected: typecheck clean (this will surface any remaining reference to `getPuzzleQueue`/`PuzzleCard`/`PuzzleQueue`/`buildPuzzleQueue` outside this task's files — none are expected, per the Global Constraints grep already done, but this is the actual verification). Test count drops by the 5 tests `puzzleQueue.test.ts` carried (its removal), otherwise unchanged from Task 3.
+Expected: typecheck fails in exactly one place — `src/renderer/src/hooks/usePuzzleSession.ts` (not a file this task touches) still imports the now-deleted `PuzzleCard` type, still calls `window.chessAPI.getPuzzleQueue()` (removed in this task), and still calls `submitPuzzleOutcome` with the old 2-argument signature. This is expected and intentional: Task 5 rewrites that file in full to consume this task's new APIs, the same way Task 5 itself knowingly leaves `PuzzlesTab.tsx` broken until Task 6 lands. The Global Constraints grep confirmed no *other* file references the removed flat-queue code — `usePuzzleSession.ts` is the one known, deliberately-deferred exception, not a gap in that grep. Confirm the typecheck output names only that one file before proceeding; if anything else fails, stop and treat it as new information the grep missed. Test count drops by the 5 tests `puzzleQueue.test.ts` carried (its removal), otherwise unchanged from Task 3.
 
 - [ ] **Step 7: Commit**
 
