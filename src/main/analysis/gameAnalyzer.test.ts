@@ -75,6 +75,50 @@ describe('analyzeGame', () => {
     expect(seenMoves).toEqual(['e4', 'e5'])
   })
 
+  it('delivers moves to onMove in game order even when the engine resolves a later position before an earlier one', async () => {
+    const resolvers: Record<string, (value: PositionEvaluation) => void> = {}
+    const engine = {
+      evaluatePosition: (fen: string) =>
+        new Promise<PositionEvaluation>((resolve) => {
+          resolvers[fen] = resolve
+        })
+    }
+
+    const seenMoves: string[] = []
+    const resultPromise = analyzeGame(positions, engine, {
+      depth: 18,
+      onMove: (move) => seenMoves.push(move.san)
+    })
+
+    // Let all three evaluatePosition calls get dispatched before resolving any.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Resolve out of game order: the last position first.
+    resolvers[AFTER_E5_FEN](evalsByFen[AFTER_E5_FEN])
+    await Promise.resolve()
+    expect(seenMoves).toEqual([]) // nothing flushed yet - fen0/fen1 still pending
+
+    resolvers[START_FEN](evalsByFen[START_FEN])
+    resolvers[AFTER_E4_FEN](evalsByFen[AFTER_E4_FEN])
+
+    const result = await resultPromise
+    if ('cancelled' in result) throw new Error('unexpected cancellation')
+    expect(seenMoves).toEqual(['e4', 'e5'])
+    expect(result.moves.map((m) => m.san)).toEqual(['e4', 'e5'])
+  })
+
+  it('rejects the whole analysis if any single position fails to evaluate', async () => {
+    const failingEngine = {
+      evaluatePosition: async (fen: string): Promise<PositionEvaluation> => {
+        if (fen === AFTER_E4_FEN) throw new Error('engine crashed')
+        return fakeEngine.evaluatePosition(fen)
+      }
+    }
+
+    await expect(analyzeGame(positions, failingEngine, { depth: 18 })).rejects.toThrow('engine crashed')
+  })
+
   it('stops early and returns cancelled when isCancelled is true', async () => {
     const result = await analyzeGame(positions, fakeEngine, {
       depth: 18,
