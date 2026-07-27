@@ -1,5 +1,4 @@
 import { memo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { AnalyzedMove, MoveClassification } from '../../../shared/types'
 import { MOVE_CLASSIFICATION_STYLE } from '../lib/moveClassificationStyle'
 
@@ -9,21 +8,10 @@ interface GameSummaryProps {
   blackAccuracy: number
   whiteUsername: string
   blackUsername: string
+  openingName: string | null
 }
 
 const CLASSIFICATIONS_TO_SHOW: MoveClassification[] = [
-  'brilliant',
-  'great',
-  'best',
-  'excellent',
-  'good',
-  'inaccuracy',
-  'mistake',
-  'blunder'
-]
-
-const ALL_CLASSIFICATIONS_FOR_LEGEND: MoveClassification[] = [
-  'book',
   'brilliant',
   'great',
   'best',
@@ -55,18 +43,22 @@ export const GameSummary = memo(function GameSummary({
   whiteAccuracy,
   blackAccuracy,
   whiteUsername,
-  blackUsername
+  blackUsername,
+  openingName
 }: GameSummaryProps): JSX.Element {
   const whiteCounts = countByClassification(moves, 'w')
   const blackCounts = countByClassification(moves, 'b')
-
-  const barData = [
-    { player: whiteUsername, ...whiteCounts },
-    { player: blackUsername, ...blackCounts }
-  ]
+  // Only classifications that actually occurred get a row - an 8-row table
+  // with mostly zeros is noise, not information, and chess.com's own report
+  // only lists what happened in this specific game.
+  const rows = CLASSIFICATIONS_TO_SHOW.filter(
+    (classification) => whiteCounts[classification] > 0 || blackCounts[classification] > 0
+  )
 
   return (
     <div className="game-summary">
+      {openingName && <p className="game-summary-opening">{openingName}</p>}
+
       <div className="accuracy-scorecards">
         <div className="accuracy-scorecard">
           <span className="accuracy-scorecard-value">{whiteAccuracy.toFixed(1)}%</span>
@@ -78,35 +70,24 @@ export const GameSummary = memo(function GameSummary({
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={90}>
-        <BarChart data={barData} layout="vertical" margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
-          <XAxis type="number" hide />
-          <YAxis type="category" dataKey="player" hide />
-          <Tooltip cursor={{ fill: 'transparent' }} />
-          {CLASSIFICATIONS_TO_SHOW.map((classification) => (
-            <Bar
-              key={classification}
-              dataKey={classification}
-              stackId="quality"
-              fill={MOVE_CLASSIFICATION_STYLE[classification].color}
-              name={MOVE_CLASSIFICATION_STYLE[classification].label}
-            />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-
-      <ul className="classification-legend">
-        {ALL_CLASSIFICATIONS_FOR_LEGEND.map((classification) => {
-          const style = MOVE_CLASSIFICATION_STYLE[classification]
-          const Icon = style.icon
-          return (
-            <li key={classification} className="classification-legend-item">
-              <Icon size={13} style={{ color: style.color }} />
-              <span>{style.label}</span>
-            </li>
-          )
-        })}
-      </ul>
+      <table className="classification-breakdown">
+        <tbody>
+          {rows.map((classification) => {
+            const style = MOVE_CLASSIFICATION_STYLE[classification]
+            const Icon = style.icon
+            return (
+              <tr key={classification}>
+                <td className="classification-breakdown-count">{whiteCounts[classification]}</td>
+                <td className="classification-breakdown-label">
+                  <Icon size={13} style={{ color: style.color }} />
+                  <span>{style.label}</span>
+                </td>
+                <td className="classification-breakdown-count">{blackCounts[classification]}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 })

@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, FlipVertical2 } from 'lucide-react'
+import { matchOpeningName } from '../../../shared/analysis/openingBook'
 import type { AnalyzedMove } from '../../../shared/types'
 import type { AnalysisState } from '../lib/analysisReducer'
 import type { PositionAtPly } from '../lib/gameNavigation'
@@ -60,6 +62,7 @@ export function AnalyzeTab({
     boardOrientation === 'white'
       ? { name: players.white, elo: players.whiteElo }
       : { name: players.black, elo: players.blackElo }
+  const openingName = useMemo(() => matchOpeningName(state.moves.map((m) => m.san)), [state.moves])
 
   return (
     <>
@@ -171,6 +174,7 @@ export function AnalyzeTab({
                 blackAccuracy={state.blackAccuracy}
                 whiteUsername={players.white}
                 blackUsername={players.black}
+                openingName={openingName}
               />
             )}
           </div>
