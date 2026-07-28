@@ -6,7 +6,8 @@ import {
   isUnlocked,
   masteryNodeKey,
   nextMasteryProgress,
-  parseMasteryNodeKey
+  parseMasteryNodeKey,
+  resolveMistakeCredit
 } from './masteryTree'
 import type { MasteryState } from './masteryTree'
 
@@ -103,5 +104,24 @@ describe('nextMasteryProgress', () => {
 describe('defaultMasteryProgress', () => {
   it('starts at a zero streak, unmastered', () => {
     expect(defaultMasteryProgress()).toEqual({ cleanStreak: 0, mastered: false })
+  })
+})
+
+describe('resolveMistakeCredit', () => {
+  it('returns null when no tactic was detected', () => {
+    expect(resolveMistakeCredit({}, [], [])).toBeNull()
+  })
+
+  it('credits the first missed tactic at its current active level', () => {
+    const state: MasteryState = { 'fork:1': { cleanStreak: 5, mastered: true } }
+    expect(resolveMistakeCredit(state, ['fork'], [])).toBe('fork:2')
+  })
+
+  it('falls back to punishedByTactics when missedTactics is empty', () => {
+    expect(resolveMistakeCredit({}, [], ['pin'])).toBe('pin:1')
+  })
+
+  it('prefers missedTactics over punishedByTactics when both are present', () => {
+    expect(resolveMistakeCredit({}, ['fork'], ['pin'])).toBe('fork:1')
   })
 })

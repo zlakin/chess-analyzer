@@ -71,3 +71,19 @@ export function nextMasteryProgress(
     mastered: current.mastered || cleanStreak >= MASTERY_STREAK_TO_MASTER
   }
 }
+
+// Which mastery node (if any) a real mistake's attempt should credit - the
+// first tag (missedTactics before punishedByTactics, matching the same
+// priority order RecentMistakesList already displays them in) at that
+// tactic's current active level. Untagged ("Positional") mistakes have no
+// natural node to credit and resolve to null - Puzzle Rating still updates
+// for these, just not any specific node's streak.
+export function resolveMistakeCredit(
+  state: MasteryState,
+  missedTactics: TacticType[],
+  punishedByTactics: TacticType[]
+): MasteryNodeKey | null {
+  const tag = [...missedTactics, ...punishedByTactics][0]
+  if (!tag) return null
+  return masteryNodeKey(tag, currentActiveLevel(state, tag))
+}

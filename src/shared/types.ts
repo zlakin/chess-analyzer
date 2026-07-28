@@ -115,8 +115,9 @@ export interface ChessAPI {
   submitPuzzleOutcome(
     outcome: PuzzleOutcome,
     classification: 'mistake' | 'blunder',
-    nodeKey: MasteryNodeKey
-  ): Promise<{ stats: PuzzleStats; nodeProgress: MasteryNodeProgress }>
+    nodeKey: MasteryNodeKey | null
+  ): Promise<{ stats: PuzzleStats; nodeProgress: MasteryNodeProgress | null }>
+  getMistakeDetail(gameUrl: string, ply: number): Promise<MistakeDetail | null>
 }
 
 export type TimeControlCategory = 'bullet' | 'blitz' | 'rapid' | 'daily'
@@ -196,6 +197,18 @@ export interface MistakeSummary {
   cpLoss: number
   missedTactics: TacticType[]
   punishedByTactics: TacticType[]
+}
+
+export interface MistakeDetail {
+  fenBefore: string
+  playedMoveUci: string
+  bestMoveUci: string
+  classification: 'mistake' | 'blunder'
+  missedTactics: TacticType[]
+  punishedByTactics: TacticType[]
+  userColor: 'w' | 'b'
+  cardId: string
+  nodeKey: MasteryNodeKey | null
 }
 
 export interface TacticTrend {
