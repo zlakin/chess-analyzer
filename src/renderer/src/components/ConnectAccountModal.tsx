@@ -1,8 +1,13 @@
-import { useState } from 'react'
-import type { LinkedAccount } from '../../../shared/types'
+import { useEffect, useState } from 'react'
+import type { LinkedAccount, PuzzleStats } from '../../../shared/types'
 
 interface ConnectAccountModalProps {
   linkedAccount: LinkedAccount | null
+  // Already fetched at the App level (useInsightsScan loads its report on
+  // mount regardless of which tab is active) - passed down rather than
+  // re-fetched, since a full insights-report call is heavier than this
+  // modal needs just to show one count.
+  gamesScanned: number | null
   onClose: () => void
   onLinked: (account: LinkedAccount) => void
   onDisconnected: () => void
@@ -12,6 +17,7 @@ type Step = 'status' | 'enter-username' | 'awaiting-code'
 
 export function ConnectAccountModal({
   linkedAccount,
+  gamesScanned,
   onClose,
   onLinked,
   onDisconnected
@@ -21,6 +27,14 @@ export function ConnectAccountModal({
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isBusy, setIsBusy] = useState(false)
+  const [puzzleStats, setPuzzleStats] = useState<PuzzleStats | null>(null)
+
+  // Fetched here rather than lifted to App.tsx: this modal is opened rarely,
+  // so there's no benefit to keeping puzzle stats warm at the top level for
+  // the whole app's lifetime just for this one occasional view.
+  useEffect(() => {
+    window.chessAPI.getPuzzleStats().then(setPuzzleStats)
+  }, [])
 
   const startLinkFor = async (targetUsername: string): Promise<void> => {
     const trimmed = targetUsername.trim()
@@ -69,6 +83,22 @@ export function ConnectAccountModal({
               Connected as <strong>{linkedAccount.username}</strong>
               {linkedAccount.verifiedAt ? ' — Verified' : ' — Unverified'}
             </p>
+            {puzzleStats && (
+              <div className="puzzle-stats-bar">
+                <div className="puzzle-stat-tile">
+                  <span className="puzzle-stat-value">{gamesScanned ?? 0}</span>
+                  <span className="puzzle-stat-label">Games analyzed</span>
+                </div>
+                <div className="puzzle-stat-tile">
+                  <span className="puzzle-stat-value">{puzzleStats.totalResolved}</span>
+                  <span className="puzzle-stat-label">Puzzles solved</span>
+                </div>
+                <div className="puzzle-stat-tile" title={`Best: ${puzzleStats.longestStreak}`}>
+                  <span className="puzzle-stat-value">{puzzleStats.currentStreak}</span>
+                  <span className="puzzle-stat-label">Solve streak</span>
+                </div>
+              </div>
+            )}
             <div className="modal-actions">
               {!linkedAccount.verifiedAt && (
                 <button className="button-primary" onClick={() => void startLinkFor(linkedAccount.username)} disabled={isBusy}>

@@ -118,6 +118,7 @@ function App(): JSX.Element {
       {isConnectModalOpen && (
         <ConnectAccountModal
           linkedAccount={linkedAccount}
+          gamesScanned={insightsScan.state.report?.gamesScanned ?? null}
           onClose={() => setIsConnectModalOpen(false)}
           onLinked={(account) => {
             setLinkedAccount(account)
