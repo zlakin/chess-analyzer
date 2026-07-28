@@ -843,10 +843,6 @@ textarea:focus {
   text-align: left;
 }
 
-.recent-mistake-row:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
 .recent-mistake-meta {
   color: var(--text-muted);
 }

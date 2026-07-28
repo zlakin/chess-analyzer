@@ -201,7 +201,6 @@ export interface MistakeSummary {
 
 export interface MistakeDetail {
   fenBefore: string
-  playedMoveUci: string
   bestMoveUci: string
   classification: 'mistake' | 'blunder'
   missedTactics: TacticType[]

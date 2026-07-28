@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { InsightsScanState } from '../hooks/useInsightsScan'
 import type { MistakeDetail } from '../../../shared/types'
 import { TopFindingsList } from './insights/TopFindingsList'
@@ -24,11 +24,26 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
 
   const [selectedMistake, setSelectedMistake] = useState<{ gameUrl: string; ply: number } | null>(null)
   const [mistakeDetail, setMistakeDetail] = useState<MistakeDetail | null>(null)
+  const mistakeRequestRef = useRef(0)
 
   const handleSelectMistake = (gameUrl: string, ply: number): void => {
+    const requestId = ++mistakeRequestRef.current
     setSelectedMistake({ gameUrl, ply })
     setMistakeDetail(null)
-    window.chessAPI.getMistakeDetail(gameUrl, ply).then(setMistakeDetail)
+    window.chessAPI
+      .getMistakeDetail(gameUrl, ply)
+      .then((detail) => {
+        if (requestId !== mistakeRequestRef.current) return
+        if (detail === null) {
+          setSelectedMistake(null)
+          return
+        }
+        setMistakeDetail(detail)
+      })
+      .catch((err) => {
+        if (requestId === mistakeRequestRef.current) setSelectedMistake(null)
+        console.error('Failed to load mistake detail', err)
+      })
   }
 
   const handleCloseMistake = (): void => {

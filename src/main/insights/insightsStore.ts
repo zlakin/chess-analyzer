@@ -129,6 +129,16 @@ export function saveGameRecord(record: GameInsightRecord): void {
   }
 }
 
+export function loadGameRecord(gameUrl: string): GameInsightRecord | null {
+  const path = gameRecordPath(gameUrl)
+  if (!existsSync(path)) return null
+  try {
+    return JSON.parse(readFileSync(path, 'utf-8')) as GameInsightRecord
+  } catch {
+    return null
+  }
+}
+
 export function loadAllGameRecords(): GameInsightRecord[] {
   const dir = gamesDir()
   if (!existsSync(dir)) return []

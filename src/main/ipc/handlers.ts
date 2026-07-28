@@ -15,7 +15,7 @@ import { loadSettings, saveSettings } from '../settings/settingsStore'
 import { startLink, verifyLink, disconnectAccount } from '../chesscom/accountLink'
 import { AnalysisRunTracker } from './analysisRunTracker'
 import { runScan } from '../insights/scanRunner'
-import { ensureSchemaVersion, loadAllGameRecords, loadScanMeta } from '../insights/insightsStore'
+import { ensureSchemaVersion, loadAllGameRecords, loadGameRecord, loadScanMeta } from '../insights/insightsStore'
 import { buildInsightsReport } from '../insights/reportAggregator'
 import { synthesizeTopFindings } from '../insights/topFindings'
 import { loadSrsState, saveSrsState } from '../srs/srsStore'
@@ -182,15 +182,13 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     IPC_CHANNELS.getMistakeDetail,
     async (_event, gameUrl: string, ply: number): Promise<MistakeDetail | null> => {
       ensureSchemaVersion()
-      const records = loadAllGameRecords()
-      const record = records.find((r) => r.gameUrl === gameUrl)
+      const record = loadGameRecord(gameUrl)
       const mistake = record?.mistakes.find((m) => m.ply === ply)
       if (!record || !mistake) return null
 
       const masteryState = loadMasteryState()
       return {
         fenBefore: mistake.fenBefore,
-        playedMoveUci: mistake.playedMoveUci,
         bestMoveUci: mistake.bestMoveUci,
         classification: mistake.classification,
         missedTactics: mistake.missedTactics,
@@ -253,7 +251,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       const updatedStats = nextPuzzleStats(stats, outcome, classification, Date.now())
       savePuzzleStats(updatedStats)
 
-      if (nodeKey === null) {
+      if (!nodeKey) {
         return { stats: updatedStats, nodeProgress: null }
       }
 
