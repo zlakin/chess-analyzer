@@ -3,6 +3,7 @@ import { BadgeCheck } from 'lucide-react'
 import { useChessComProfile } from '../hooks/useChessComProfile'
 import { resultBadge } from '../lib/chessComResult'
 import { RATING_LABELS } from '../lib/chessComRatingLabels'
+import { groupGamesByDate } from '../lib/groupGamesByDate'
 
 interface ImportModalProps {
   onGameLoaded: (pgn: string) => void
@@ -134,33 +135,41 @@ export function ImportModal({ onGameLoaded }: ImportModalProps): JSX.Element {
           {chessCom.state.isFetching && chessCom.state.games.length === 0 && (
             <p className="chesscom-loading">Loading games...</p>
           )}
-          <ul className="chesscom-game-list">
-            {chessCom.state.games.map((game) => {
-              const badge = resultBadge(game)
-              return (
-                <li key={game.url}>
-                  <button className="chesscom-game-card" onClick={() => onGameLoaded(game.pgn)}>
-                    <span className="chesscom-game-players">
-                      <span className="chesscom-game-player">
-                        {game.white.username}{' '}
-                        <span className="chesscom-game-rating">({game.white.rating})</span>
-                      </span>
-                      <span className={`chesscom-game-result ${badge.outcome}`}>
-                        {badge.text}
-                      </span>
-                      <span className="chesscom-game-player">
-                        {game.black.username}{' '}
-                        <span className="chesscom-game-rating">({game.black.rating})</span>
-                      </span>
-                    </span>
-                    <span className="chesscom-game-date">
-                      {new Date(game.endTime * 1000).toLocaleDateString()}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+          {groupGamesByDate(chessCom.state.games).map((group) => (
+            <div key={`${group.label}-${group.games[0].url}`} className="chesscom-game-group">
+              <h4 className="insights-subheading">{group.label}</h4>
+              <ul className="chesscom-game-list">
+                {group.games.map((game) => {
+                  const badge = resultBadge(game)
+                  return (
+                    <li key={game.url}>
+                      <button className="chesscom-game-card" onClick={() => onGameLoaded(game.pgn)}>
+                        <span className="chesscom-game-players">
+                          <span className="chesscom-game-player">
+                            {game.white.username}{' '}
+                            <span className="chesscom-game-rating">({game.white.rating})</span>
+                          </span>
+                          <span className={`chesscom-game-result ${badge.outcome}`}>
+                            {badge.text}
+                          </span>
+                          <span className="chesscom-game-player">
+                            {game.black.username}{' '}
+                            <span className="chesscom-game-rating">({game.black.rating})</span>
+                          </span>
+                        </span>
+                        <span className="chesscom-game-date">
+                          {new Date(game.endTime * 1000).toLocaleTimeString(undefined, {
+                            hour: 'numeric',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
         </div>
       )}
     </div>
