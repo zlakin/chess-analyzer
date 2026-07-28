@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import type { InsightsScanState } from '../hooks/useInsightsScan'
+import type { MistakeDetail } from '../../../shared/types'
 import { TopFindingsList } from './insights/TopFindingsList'
 import { BucketTabs } from './insights/BucketTabs'
+import { MistakeCoachModal } from './MistakeCoachModal'
 import { formatRelativeTime } from '../lib/relativeTime'
 
 interface InsightsTabProps {
@@ -18,6 +21,20 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
   const hasReport = state.report !== null && state.report.gamesScanned > 0
   const lastScanTime = state.report?.lastScanTime ?? null
   const isStale = lastScanTime !== null && Date.now() - lastScanTime > STALE_SCAN_MS
+
+  const [selectedMistake, setSelectedMistake] = useState<{ gameUrl: string; ply: number } | null>(null)
+  const [mistakeDetail, setMistakeDetail] = useState<MistakeDetail | null>(null)
+
+  const handleSelectMistake = (gameUrl: string, ply: number): void => {
+    setSelectedMistake({ gameUrl, ply })
+    setMistakeDetail(null)
+    window.chessAPI.getMistakeDetail(gameUrl, ply).then(setMistakeDetail)
+  }
+
+  const handleCloseMistake = (): void => {
+    setSelectedMistake(null)
+    setMistakeDetail(null)
+  }
 
   return (
     <div className="insights-tab">
@@ -55,8 +72,12 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
       {hasReport && state.report && (
         <div className="insights-report">
           <TopFindingsList findings={state.report.topFindings} />
-          <BucketTabs buckets={state.report.buckets} />
+          <BucketTabs buckets={state.report.buckets} onSelectMistake={handleSelectMistake} />
         </div>
+      )}
+
+      {selectedMistake && mistakeDetail && (
+        <MistakeCoachModal detail={mistakeDetail} onClose={handleCloseMistake} />
       )}
     </div>
   )

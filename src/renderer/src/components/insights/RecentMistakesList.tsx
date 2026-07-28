@@ -3,6 +3,7 @@ import { TACTIC_LABELS } from '../../lib/tacticLabels'
 
 interface RecentMistakesListProps {
   mistakes: MistakeSummary[]
+  onSelectMistake: (gameUrl: string, ply: number) => void
 }
 
 const PHASE_LABELS = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' }
@@ -15,7 +16,7 @@ function displayTags(mistake: MistakeSummary): TacticType[] {
   return Array.from(new Set([...mistake.missedTactics, ...mistake.punishedByTactics]))
 }
 
-export function RecentMistakesList({ mistakes }: RecentMistakesListProps): JSX.Element | null {
+export function RecentMistakesList({ mistakes, onSelectMistake }: RecentMistakesListProps): JSX.Element | null {
   if (mistakes.length === 0) return null
 
   return (
@@ -23,21 +24,26 @@ export function RecentMistakesList({ mistakes }: RecentMistakesListProps): JSX.E
       {mistakes.map((mistake) => {
         const tags = displayTags(mistake)
         return (
-          <li key={`${mistake.gameUrl}-${mistake.ply}`} className="recent-mistake-row">
-            <span className="recent-mistake-meta">
-              {`${new Date(mistake.endTime * 1000).toLocaleDateString()} · vs ${mistake.opponentUsername} · move ${Math.ceil(mistake.ply / 2)} · ${PHASE_LABELS[mistake.phase]}`}
-            </span>
-            <span className="recent-mistake-tags">
-              {tags.length === 0 ? (
-                <span className="recent-mistake-tag">Positional</span>
-              ) : (
-                tags.map((tag) => (
-                  <span key={tag} className="recent-mistake-tag">
-                    {TACTIC_LABELS[tag]}
-                  </span>
-                ))
-              )}
-            </span>
+          <li key={`${mistake.gameUrl}-${mistake.ply}`}>
+            <button
+              className="recent-mistake-row"
+              onClick={() => onSelectMistake(mistake.gameUrl, mistake.ply)}
+            >
+              <span className="recent-mistake-meta">
+                {`${new Date(mistake.endTime * 1000).toLocaleDateString()} · vs ${mistake.opponentUsername} · move ${Math.ceil(mistake.ply / 2)} · ${PHASE_LABELS[mistake.phase]}`}
+              </span>
+              <span className="recent-mistake-tags">
+                {tags.length === 0 ? (
+                  <span className="recent-mistake-tag">Positional</span>
+                ) : (
+                  tags.map((tag) => (
+                    <span key={tag} className="recent-mistake-tag">
+                      {TACTIC_LABELS[tag]}
+                    </span>
+                  ))
+                )}
+              </span>
+            </button>
           </li>
         )
       })}

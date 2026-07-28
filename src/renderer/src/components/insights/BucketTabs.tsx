@@ -5,9 +5,10 @@ import { TimeControlSection } from './TimeControlSection'
 
 interface BucketTabsProps {
   buckets: InsightsBucket[]
+  onSelectMistake: (gameUrl: string, ply: number) => void
 }
 
-export function BucketTabs({ buckets }: BucketTabsProps): JSX.Element | null {
+export function BucketTabs({ buckets, onSelectMistake }: BucketTabsProps): JSX.Element | null {
   const [selectedKey, setSelectedKey] = useState<InsightsBucketKey>('overall')
 
   const selected = buckets.find((bucket) => bucket.key === selectedKey) ?? buckets[0]
@@ -29,7 +30,7 @@ export function BucketTabs({ buckets }: BucketTabsProps): JSX.Element | null {
       {/* Keyed on the bucket so switching tabs remounts the panel fresh -
           otherwise an expanded "show more" state from one bucket would
           silently carry over to whichever bucket is selected next. */}
-      <TimeControlSection key={selected.key} bucket={selected} />
+      <TimeControlSection key={selected.key} bucket={selected} onSelectMistake={onSelectMistake} />
     </div>
   )
 }

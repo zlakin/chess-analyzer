@@ -6,6 +6,7 @@ import { RecentMistakesList } from './RecentMistakesList'
 
 interface TimeControlSectionProps {
   bucket: InsightsBucket
+  onSelectMistake: (gameUrl: string, ply: number) => void
 }
 
 const RECENT_MISTAKES_PREVIEW_COUNT = 5
@@ -21,7 +22,7 @@ const CHART_TOOLTIP_STYLE = {
   itemStyle: { color: 'var(--text-muted)' }
 }
 
-export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Element {
+export function TimeControlSection({ bucket, onSelectMistake }: TimeControlSectionProps): JSX.Element {
   const [showAllMistakes, setShowAllMistakes] = useState(false)
 
   if (!bucket.hasEnoughData) {
@@ -124,7 +125,7 @@ export function TimeControlSection({ bucket }: TimeControlSectionProps): JSX.Ele
       {bucket.recentMistakes.length > 0 && (
         <>
           <h4 className="insights-subheading">Recent mistakes</h4>
-          <RecentMistakesList mistakes={visibleMistakes} />
+          <RecentMistakesList mistakes={visibleMistakes} onSelectMistake={onSelectMistake} />
           {hiddenMistakesCount > 0 && (
             <button className="button-secondary show-more-mistakes" onClick={() => setShowAllMistakes(true)}>
               Show {hiddenMistakesCount} more
