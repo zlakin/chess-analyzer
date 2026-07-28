@@ -12,7 +12,8 @@ import type {
   MasteryNodeKey,
   MasteryNodeProgress,
   MasteryTree,
-  MasteryPuzzleCard
+  MasteryPuzzleCard,
+  MistakeDetail
 } from '../shared/types'
 
 const chessAPI: ChessAPI = {
@@ -50,8 +51,10 @@ const chessAPI: ChessAPI = {
   submitPuzzleOutcome: (
     outcome: PuzzleOutcome,
     classification: 'mistake' | 'blunder',
-    nodeKey: MasteryNodeKey
-  ) => ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleOutcome, outcome, classification, nodeKey)
+    nodeKey: MasteryNodeKey | null
+  ) => ipcRenderer.invoke(IPC_CHANNELS.submitPuzzleOutcome, outcome, classification, nodeKey),
+  getMistakeDetail: (gameUrl: string, ply: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.getMistakeDetail, gameUrl, ply)
 }
 
 contextBridge.exposeInMainWorld('chessAPI', chessAPI)

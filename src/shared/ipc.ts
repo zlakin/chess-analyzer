@@ -16,6 +16,7 @@ export const IPC_CHANNELS = {
   scanProgress: 'insights:scan-progress',
   cancelScan: 'insights:cancel-scan',
   getInsightsReport: 'insights:get-report',
+  getMistakeDetail: 'insights:get-mistake-detail',
   getMasteryTree: 'mastery:get-tree',
   getNodeQueue: 'mastery:get-node-queue',
   submitPuzzleReview: 'puzzles:submit-review',

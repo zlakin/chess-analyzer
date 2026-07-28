@@ -22,10 +22,10 @@ import { loadSrsState, saveSrsState } from '../srs/srsStore'
 import { newCardState, nextCardState } from '../srs/sm2'
 import { buildMasteryTree, buildNodeQueue } from '../srs/masteryQueue'
 import { loadMasteryState, saveMasteryState } from '../srs/masteryStore'
-import { nodeProgress, nextMasteryProgress } from '../srs/masteryTree'
+import { nodeProgress, nextMasteryProgress, resolveMistakeCredit } from '../srs/masteryTree'
 import { loadPuzzleStats, savePuzzleStats } from '../srs/puzzleStatsStore'
 import { nextPuzzleStats, localDateString } from '../srs/puzzleRating'
-import type { MasteryNodeKey, PuzzleOutcome, SrsQuality } from '../../shared/types'
+import type { MasteryNodeKey, MistakeDetail, PuzzleOutcome, SrsQuality } from '../../shared/types'
 
 const ANALYSIS_DEPTH_DEFAULT = 18
 
@@ -178,6 +178,30 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return { ...partialReport, topFindings: synthesizeTopFindings(partialReport) }
   })
 
+  ipcMain.handle(
+    IPC_CHANNELS.getMistakeDetail,
+    async (_event, gameUrl: string, ply: number): Promise<MistakeDetail | null> => {
+      ensureSchemaVersion()
+      const records = loadAllGameRecords()
+      const record = records.find((r) => r.gameUrl === gameUrl)
+      const mistake = record?.mistakes.find((m) => m.ply === ply)
+      if (!record || !mistake) return null
+
+      const masteryState = loadMasteryState()
+      return {
+        fenBefore: mistake.fenBefore,
+        playedMoveUci: mistake.playedMoveUci,
+        bestMoveUci: mistake.bestMoveUci,
+        classification: mistake.classification,
+        missedTactics: mistake.missedTactics,
+        punishedByTactics: mistake.punishedByTactics,
+        userColor: record.userColor,
+        cardId: `${gameUrl}#${ply}`,
+        nodeKey: resolveMistakeCredit(masteryState, mistake.missedTactics, mistake.punishedByTactics)
+      }
+    }
+  )
+
   ipcMain.handle(IPC_CHANNELS.getMasteryTree, async () => {
     ensureSchemaVersion()
     const records = loadAllGameRecords()
@@ -223,11 +247,15 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       _event,
       outcome: PuzzleOutcome,
       classification: 'mistake' | 'blunder',
-      nodeKey: MasteryNodeKey
+      nodeKey: MasteryNodeKey | null
     ) => {
       const stats = loadPuzzleStats()
       const updatedStats = nextPuzzleStats(stats, outcome, classification, Date.now())
       savePuzzleStats(updatedStats)
+
+      if (nodeKey === null) {
+        return { stats: updatedStats, nodeProgress: null }
+      }
 
       const masteryState = loadMasteryState()
       const updatedProgress = nextMasteryProgress(nodeProgress(masteryState, nodeKey), outcome)
