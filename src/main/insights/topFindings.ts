@@ -120,7 +120,7 @@ function trendFindings(bucket: InsightsBucket): FindingCandidate[] {
   })
 }
 
-export function synthesizeTopFindings(report: Omit<InsightsReport, 'topFindings'>): TopFinding[] {
+export function synthesizeTopFindings(report: Omit<InsightsReport, 'topFindings' | 'staleSchema'>): TopFinding[] {
   const candidates: FindingCandidate[] = []
 
   for (const bucket of report.buckets) {

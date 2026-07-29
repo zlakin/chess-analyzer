@@ -4,11 +4,10 @@ import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import type { GameInsightRecord, ScanMeta } from '../../shared/types'
 
-// Bump this whenever GameInsightMistake/GameInsightRecord's shape changes
-// in a way old cached JSON can't satisfy -- a mismatch wipes the cache
-// (see ensureSchemaVersion below), the same mechanism ensureUsernameScope
-// already uses for a tracked-username change.
-export const CURRENT_SCHEMA_VERSION = 1
+// Version 2: move classification moved from raw centipawn loss to
+// win-probability loss, and the sacrifice signal moved to static exchange
+// evaluation, so version-1 mistakes were selected by different rules.
+export const CURRENT_SCHEMA_VERSION = 2
 
 function defaultScanMeta(): ScanMeta {
   return { username: null, lastScanTime: null, scannedUrls: [], schemaVersion: CURRENT_SCHEMA_VERSION }
@@ -38,8 +37,9 @@ export function loadScanMeta(): ScanMeta {
       lastScanTime: typeof parsed.lastScanTime === 'number' ? parsed.lastScanTime : null,
       scannedUrls: Array.isArray(parsed.scannedUrls) ? parsed.scannedUrls : [],
       // 0 never matches CURRENT_SCHEMA_VERSION, so a pre-versioning
-      // scan-meta.json (or a missing/corrupt field) always triggers
-      // ensureSchemaVersion's wipe below rather than being trusted.
+      // scan-meta.json (or a missing/corrupt field) always makes
+      // ensureSchemaVersion() below record the current version rather than
+      // being trusted as already up to date.
       schemaVersion: typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 0
     }
   } catch {
@@ -63,8 +63,11 @@ export function isGameScanned(gameUrl: string): boolean {
   const path = gameRecordPath(gameUrl)
   if (!existsSync(path)) return false
   try {
-    JSON.parse(readFileSync(path, 'utf-8'))
-    return true
+    const record = JSON.parse(readFileSync(path, 'utf-8')) as Partial<GameInsightRecord>
+    // A record written before the current analysis rules is real data worth
+    // keeping and rendering, but it must not suppress a re-analysis -- the
+    // rescan is exactly how it gets rebuilt.
+    return (record.schemaVersion ?? 1) >= CURRENT_SCHEMA_VERSION
   } catch {
     return false
   }
@@ -99,24 +102,27 @@ export function ensureUsernameScope(username: string): void {
   saveScanMeta({ username, lastScanTime: null, scannedUrls: [] })
 }
 
-// Old cached records were written before GameInsightMistake grew
-// cpLoss/fenBefore/missedTactics/etc -- there is no way to backfill those
-// fields without re-running the engine, so a version mismatch wipes the
-// cache exactly like a username change does, forcing a full rescan on the
-// next run. Called before ensureUsernameScope in runScan so a stale
-// cache is cleared regardless of whether the username also happens to be
-// changing at the same time.
+// Deliberately does NOT delete anything. This runs from four read paths
+// (getInsightsReport, getMistakeDetail, getMasteryTree, getNodeQueue), so
+// the previous "unlink every file in games/" behaviour meant that merely
+// opening a tab after a version bump destroyed hours of engine work with no
+// warning -- and orphaned every card in srs-state.json, which is keyed by
+// `${gameUrl}#${ply}`. Instead, stale records stay readable and keep
+// rendering; isGameScanned() reports them as unscanned so the next rescan
+// rebuilds them one game at a time, and the UI asks for that rescan.
 export function ensureSchemaVersion(): void {
   const meta = loadScanMeta()
   if (meta.schemaVersion === CURRENT_SCHEMA_VERSION) return
+  saveScanMeta({ schemaVersion: CURRENT_SCHEMA_VERSION })
+}
 
-  const dir = gamesDir()
-  if (existsSync(dir)) {
-    for (const fileName of readdirSync(dir)) {
-      if (fileName.endsWith('.json')) unlinkSync(join(dir, fileName))
-    }
-  }
-  saveScanMeta({ schemaVersion: CURRENT_SCHEMA_VERSION, lastScanTime: null, scannedUrls: [] })
+// O(n) file reads, same as loadAllGameRecords() itself -- acceptable
+// because the only caller (getInsightsReport) already pays that cost every
+// time it builds a report, so this doesn't add a new pass over disk in
+// practice. Not cached: the cache would need invalidating on every
+// saveGameRecord(), which is unwarranted complexity for a read this cheap.
+export function isSchemaStale(): boolean {
+  return loadAllGameRecords().some((record) => (record.schemaVersion ?? 1) < CURRENT_SCHEMA_VERSION)
 }
 
 export function saveGameRecord(record: GameInsightRecord): void {

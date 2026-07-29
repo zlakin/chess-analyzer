@@ -145,6 +145,10 @@ export interface GameInsightMistake {
   classification: 'mistake' | 'blunder'
   phase: GamePhase
   cpLoss: number
+  /** Mover-perspective evaluation before the mistake, in centipawns. Stored
+   *  so a future classifier change can be applied without a rescan. */
+  evalBeforeMoverCp: number
+  winPercentLoss: number
   fenBefore: string
   playedMoveUci: string
   bestMoveUci: string
@@ -164,6 +168,7 @@ export interface GameInsightRecord {
   openingName: string | null
   accuracy: number
   mistakes: GameInsightMistake[]
+  schemaVersion: number
 }
 
 export interface ScanMeta {
@@ -247,6 +252,7 @@ export interface InsightsReport {
   lastScanTime: number | null
   topFindings: TopFinding[]
   buckets: InsightsBucket[]
+  staleSchema: boolean
 }
 
 export interface ScanProgress {

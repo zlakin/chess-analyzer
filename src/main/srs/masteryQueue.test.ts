@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { buildMasteryTree, buildNodeQueue } from './masteryQueue'
 import type { GameInsightRecord, SrsCardState, TacticType } from '../../shared/types'
 import type { MasteryState } from './masteryTree'
+import { CURRENT_SCHEMA_VERSION } from '../insights/insightsStore'
 
 function mistakeRecord(
   gameUrl: string,
@@ -18,12 +19,15 @@ function mistakeRecord(
     result: 'loss',
     openingName: null,
     accuracy: 80,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     mistakes: [
       {
         ply,
         classification: 'blunder',
         phase: 'middlegame',
         cpLoss: 250,
+        evalBeforeMoverCp: 0,
+        winPercentLoss: 25,
         fenBefore: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
         playedMoveUci: 'e2e3',
         bestMoveUci: 'e2e4',

@@ -164,7 +164,11 @@ const TIME_CONTROL_CATEGORIES: TimeControlCategory[] = ['bullet', 'blitz', 'rapi
 export function buildInsightsReport(
   records: GameInsightRecord[],
   lastScanTime: number | null
-): Omit<InsightsReport, 'topFindings'> {
+  // staleSchema is attached separately by the caller via
+  // insightsStore's isSchemaStale(), which re-reads the same records --
+  // kept out of this function so a bucket-aggregation helper doesn't also
+  // own schema-version policy.
+): Omit<InsightsReport, 'topFindings' | 'staleSchema'> {
   const buckets: InsightsBucket[] = [buildBucket('overall', records)]
 
   for (const category of TIME_CONTROL_CATEGORIES) {

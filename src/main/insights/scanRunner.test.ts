@@ -17,7 +17,12 @@ vi.mock('./insightsStore', () => ({
   saveGameRecord: (record: unknown) => saveGameRecordMock(record),
   saveScanMeta: (patch: unknown) => saveScanMetaMock(patch),
   ensureUsernameScope: (username: string) => ensureUsernameScopeMock(username),
-  ensureSchemaVersion: () => ensureSchemaVersionMock()
+  ensureSchemaVersion: () => ensureSchemaVersionMock(),
+  // extractInsightRecord.ts (reached indirectly through runScan) reads this
+  // constant to stamp every record it builds -- the mock above replaces the
+  // whole module, so it has to be supplied here too or that import resolves
+  // to undefined. The exact number doesn't matter to any assertion below.
+  CURRENT_SCHEMA_VERSION: 2
 }))
 
 import { runScan } from './scanRunner'

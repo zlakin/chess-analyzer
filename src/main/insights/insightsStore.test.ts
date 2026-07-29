@@ -22,11 +22,13 @@ import {
   loadAllGameRecords,
   ensureUsernameScope,
   ensureSchemaVersion,
+  isSchemaStale,
   CURRENT_SCHEMA_VERSION
 } from './insightsStore'
 import type { GameInsightRecord } from '../../shared/types'
+import { createHash } from 'node:crypto'
 
-function record(gameUrl: string): GameInsightRecord {
+function recordFor(gameUrl: string): GameInsightRecord {
   return {
     gameUrl,
     endTime: 1000,
@@ -36,8 +38,19 @@ function record(gameUrl: string): GameInsightRecord {
     result: 'win',
     openingName: null,
     accuracy: 90,
-    mistakes: []
+    mistakes: [],
+    schemaVersion: CURRENT_SCHEMA_VERSION
   }
+}
+
+// Writes a game-record JSON file directly to disk, bypassing saveGameRecord
+// -- needed to simulate a record shape saveGameRecord itself could never
+// produce, e.g. one written before the schemaVersion field existed at all.
+function writeRecordJsonDirectly(gameUrl: string, json: unknown): void {
+  const dir = join(userDataDir, 'games')
+  mkdirSync(dir, { recursive: true })
+  const hash = createHash('sha1').update(gameUrl).digest('hex')
+  writeFileSync(join(dir, `${hash}.json`), JSON.stringify(json), 'utf-8')
 }
 
 describe('insightsStore', () => {
@@ -70,12 +83,12 @@ describe('insightsStore', () => {
 
   it('a game is not scanned until its record is saved', () => {
     expect(isGameScanned('https://www.chess.com/game/live/1')).toBe(false)
-    saveGameRecord(record('https://www.chess.com/game/live/1'))
+    saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
     expect(isGameScanned('https://www.chess.com/game/live/1')).toBe(true)
   })
 
   it('treats a corrupted per-game cache file as not scanned, even if scan-meta lists it', () => {
-    saveGameRecord(record('https://www.chess.com/game/live/1'))
+    saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
     const dir = join(userDataDir, 'games')
     const [fileName] = readdirSync(dir)
     writeFileSync(join(dir, fileName), '{not valid json', 'utf-8')
@@ -84,7 +97,7 @@ describe('insightsStore', () => {
   })
 
   it('still treats a game as scanned when scan-meta.json is corrupted but its own cache file is intact', () => {
-    saveGameRecord(record('https://www.chess.com/game/live/1'))
+    saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
     writeFileSync(join(userDataDir, 'scan-meta.json'), '{not valid json', 'utf-8')
 
     expect(isGameScanned('https://www.chess.com/game/live/1')).toBe(true)
@@ -92,7 +105,7 @@ describe('insightsStore', () => {
 
   describe('ensureUsernameScope', () => {
     it('records the username on the very first scan without clearing anything', () => {
-      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
       ensureUsernameScope('hikaru')
 
       expect(loadScanMeta().username).toBe('hikaru')
@@ -101,7 +114,7 @@ describe('insightsStore', () => {
 
     it('is a no-op when the username is unchanged (case-insensitively)', () => {
       ensureUsernameScope('hikaru')
-      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
 
       ensureUsernameScope('Hikaru')
 
@@ -110,8 +123,8 @@ describe('insightsStore', () => {
 
     it('clears all cached game records and resets scan metadata when the tracked username changes', () => {
       ensureUsernameScope('hikaru')
-      saveGameRecord(record('https://www.chess.com/game/live/1'))
-      saveGameRecord(record('https://www.chess.com/game/live/2'))
+      saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
+      saveGameRecord(recordFor('https://www.chess.com/game/live/2'))
 
       ensureUsernameScope('magnuscarlsen')
 
@@ -137,46 +150,58 @@ describe('insightsStore', () => {
 
   describe('ensureSchemaVersion', () => {
     it('is a no-op when the stored schema version already matches', () => {
-      saveGameRecord(record('https://www.chess.com/game/live/1'))
+      saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
       ensureSchemaVersion()
 
       expect(loadAllGameRecords()).toHaveLength(1)
     })
 
-    it('clears the cache and bumps the version when the stored version is stale', () => {
-      saveGameRecord(record('https://www.chess.com/game/live/1'))
-      saveScanMeta({ schemaVersion: 0 })
+    it('does not delete cached records when the schema version is stale', () => {
+      saveGameRecord(recordFor('https://example.com/1'))
+      saveScanMeta({ schemaVersion: 1 })
 
       ensureSchemaVersion()
 
-      expect(loadAllGameRecords()).toEqual([])
-      expect(loadScanMeta().schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
-    })
-
-    it('treats a scan-meta.json written before schema versioning existed as stale', () => {
-      saveGameRecord(record('https://www.chess.com/game/live/1'))
-      // Simulate pre-versioning data: no schemaVersion field at all.
-      saveScanMeta({ username: 'hikaru', lastScanTime: 500, scannedUrls: ['https://www.chess.com/game/live/1'] })
-      // saveScanMeta always merges a patch onto a fresh loadScanMeta() read
-      // from disk, so routing a version-less object back through it can't
-      // actually omit schemaVersion from the persisted file (the fresh
-      // read still has it, and the patch has no key to overwrite it with).
-      // Write directly to disk instead, to simulate a real pre-upgrade
-      // scan-meta.json that predates the schemaVersion field entirely.
-      const meta = loadScanMeta()
-      // @ts-expect-error -- deliberately constructing a pre-versioning shape
-      delete meta.schemaVersion
-      writeFileSync(join(userDataDir, 'scan-meta.json'), JSON.stringify(meta), 'utf-8')
-
-      ensureSchemaVersion()
-
-      expect(loadAllGameRecords()).toEqual([])
+      expect(loadAllGameRecords()).toHaveLength(1)
     })
   })
 
+  it('reports a stale schema without changing the stored version', () => {
+    // isSchemaStale() answers from the per-game records themselves, not
+    // from scan-meta's own schemaVersion bookkeeping field -- so staleness
+    // requires an actual stale record, and the assertion below confirms
+    // it's a pure read that never touches scan-meta's stored version as a
+    // side effect.
+    saveGameRecord({ ...recordFor('https://example.com/1a'), schemaVersion: 1 })
+    const storedVersionBefore = loadScanMeta().schemaVersion
+
+    expect(isSchemaStale()).toBe(true)
+    expect(loadScanMeta().schemaVersion).toBe(storedVersionBefore)
+  })
+
+  it('treats a record written under an older schema as unscanned so a rescan rebuilds it', () => {
+    const url = 'https://example.com/2'
+    saveGameRecord({ ...recordFor(url), schemaVersion: 1 })
+    expect(isGameScanned(url)).toBe(false)
+  })
+
+  it('treats a record written under the current schema as scanned', () => {
+    const url = 'https://example.com/3'
+    saveGameRecord(recordFor(url))
+    expect(isGameScanned(url)).toBe(true)
+  })
+
+  it('treats a record with no schemaVersion field as version 1', () => {
+    const url = 'https://example.com/4'
+    const { schemaVersion: _omitted, ...legacy } = recordFor(url)
+    writeRecordJsonDirectly(url, legacy)
+    expect(isGameScanned(url)).toBe(false)
+    expect(loadAllGameRecords()).toHaveLength(1)
+  })
+
   it('loadAllGameRecords returns every saved record and skips corrupted files', () => {
-    saveGameRecord(record('https://www.chess.com/game/live/1'))
-    saveGameRecord(record('https://www.chess.com/game/live/2'))
+    saveGameRecord(recordFor('https://www.chess.com/game/live/1'))
+    saveGameRecord(recordFor('https://www.chess.com/game/live/2'))
     mkdirSync(join(userDataDir, 'games'), { recursive: true })
     writeFileSync(join(userDataDir, 'games', 'garbage.json'), 'not json', 'utf-8')
 

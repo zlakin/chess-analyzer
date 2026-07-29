@@ -8,6 +8,7 @@ import type {
 import { gamePhaseAt } from './phaseHeuristic'
 import { detectTactics } from '../../shared/analysis/tacticDetector'
 import { computeMoveEvalDelta } from '../../shared/engineMath'
+import { CURRENT_SCHEMA_VERSION } from './insightsStore'
 import {
   resolveTimeControlCategory,
   parseClockSeconds,
@@ -54,12 +55,15 @@ export function extractInsightRecord(
       const clockSecondsRemaining = hasClockData ? clockSeconds[move.ply - 1] : null
       const bestMoveUci = move.evalBefore.lines[0]?.moveUci
       const opponentBestMoveUci = move.evalAfter.lines[0]?.moveUci
+      const delta = computeMoveEvalDelta(move.evalBefore, move.evalAfter, move.moveUci)
 
       return {
         ply: move.ply,
         classification: move.classification as 'mistake' | 'blunder',
         phase: gamePhaseAt(move.fenAfter, move.ply),
-        cpLoss: computeMoveEvalDelta(move.evalBefore, move.evalAfter, move.moveUci).cpLoss,
+        cpLoss: delta.cpLoss,
+        evalBeforeMoverCp: delta.evalBeforeMoverCp,
+        winPercentLoss: delta.winPercentLoss,
         fenBefore: move.fenBefore,
         playedMoveUci: move.moveUci,
         bestMoveUci: bestMoveUci ?? move.moveUci,
@@ -82,6 +86,7 @@ export function extractInsightRecord(
     result: resultFor(userColor, game),
     openingName,
     accuracy: userColor === 'w' ? analysis.whiteAccuracy : analysis.blackAccuracy,
-    mistakes
+    mistakes,
+    schemaVersion: CURRENT_SCHEMA_VERSION
   }
 }

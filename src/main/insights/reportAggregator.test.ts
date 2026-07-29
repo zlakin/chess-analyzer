@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildInsightsReport } from './reportAggregator'
 import type { GameInsightMistake, GameInsightRecord } from '../../shared/types'
+import { CURRENT_SCHEMA_VERSION } from './insightsStore'
 
 function record(overrides: Partial<GameInsightRecord>): GameInsightRecord {
   return {
@@ -13,6 +14,7 @@ function record(overrides: Partial<GameInsightRecord>): GameInsightRecord {
     openingName: null,
     accuracy: 90,
     mistakes: [],
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     ...overrides
   }
 }
@@ -23,6 +25,8 @@ function mistake(overrides: Partial<GameInsightMistake>): GameInsightMistake {
     classification: 'mistake',
     phase: 'middlegame',
     cpLoss: 150,
+    evalBeforeMoverCp: 0,
+    winPercentLoss: 15,
     fenBefore: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
     playedMoveUci: 'a2a3',
     bestMoveUci: 'e2e4',

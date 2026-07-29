@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildTrend } from './trendBucketing'
 import type { GameInsightRecord } from '../../shared/types'
+import { CURRENT_SCHEMA_VERSION } from './insightsStore'
 
 function record(endTime: number, accuracy: number): GameInsightRecord {
   return {
@@ -12,7 +13,8 @@ function record(endTime: number, accuracy: number): GameInsightRecord {
     result: 'win',
     openingName: null,
     accuracy,
-    mistakes: []
+    mistakes: [],
+    schemaVersion: CURRENT_SCHEMA_VERSION
   }
 }
 

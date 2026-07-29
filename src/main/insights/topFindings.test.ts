@@ -27,7 +27,7 @@ function bucket(overrides: Partial<InsightsBucket>): InsightsBucket {
 
 describe('synthesizeTopFindings', () => {
   it('surfaces the dominant mistake phase when it is over half of all mistakes', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [bucket({})]
@@ -38,7 +38,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('does not surface a phase finding when no phase dominates', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [bucket({ phaseBreakdown: { opening: 3, middlegame: 4, endgame: 3 } })]
@@ -48,7 +48,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('skips buckets that do not have enough data', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 2,
       lastScanTime: null,
       buckets: [bucket({ hasEnoughData: false })]
@@ -57,7 +57,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('surfaces a "been caught by" finding when a tactic is a large share of what punished the player', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [bucket({ tacticBreakdown: { ...emptyTacticBreakdown(), fork: 4, hung_piece: 1 } })]
@@ -68,7 +68,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('surfaces a "missed" finding separately from a "caught by" finding', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [
@@ -84,7 +84,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('does not surface a tactic finding below the count threshold', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [bucket({ tacticBreakdown: { ...emptyTacticBreakdown(), fork: 2, hung_piece: 8 } })]
@@ -94,7 +94,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('surfaces a weak-opening finding when accuracy is well below the bucket average', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [
@@ -109,7 +109,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('does not surface a time-pressure finding when the count is a small share of a large sample', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [bucket({ totalMistakes: 200, timePressureCount: 5 })]
@@ -119,7 +119,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('gates a time-pressure finding by share of mistakes, not just raw count', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [
@@ -134,7 +134,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('surfaces a trend finding when a tactic is being caught more often over time', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [bucket({ tacticTrends: [{ type: 'fork', olderShare: 0.2, newerShare: 0.6 }] })]
@@ -145,7 +145,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('surfaces a trend finding phrased as "less often" when a tactic\'s share dropped', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [bucket({ tacticTrends: [{ type: 'pin', olderShare: 0.6, newerShare: 0.2 }] })]
@@ -156,7 +156,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('ranks findings by significance, most significant first', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [
@@ -177,7 +177,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('collapses the same phase finding across buckets, keeping only the highest-significance instance', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [
@@ -193,7 +193,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('collapses the same tactic finding across buckets too, keeping the strongest one', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [
@@ -207,7 +207,7 @@ describe('synthesizeTopFindings', () => {
   })
 
   it('collapses a trend finding across buckets even when the reported direction differs', () => {
-    const report: Omit<InsightsReport, 'topFindings'> = {
+    const report: Omit<InsightsReport, 'topFindings' | 'staleSchema'> = {
       gamesScanned: 20,
       lastScanTime: null,
       buckets: [

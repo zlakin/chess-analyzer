@@ -15,7 +15,13 @@ import { loadSettings, saveSettings } from '../settings/settingsStore'
 import { startLink, verifyLink, disconnectAccount } from '../chesscom/accountLink'
 import { AnalysisRunTracker } from './analysisRunTracker'
 import { runScan } from '../insights/scanRunner'
-import { ensureSchemaVersion, loadAllGameRecords, loadGameRecord, loadScanMeta } from '../insights/insightsStore'
+import {
+  ensureSchemaVersion,
+  isSchemaStale,
+  loadAllGameRecords,
+  loadGameRecord,
+  loadScanMeta
+} from '../insights/insightsStore'
 import { buildInsightsReport } from '../insights/reportAggregator'
 import { synthesizeTopFindings } from '../insights/topFindings'
 import { loadSrsState, saveSrsState } from '../srs/srsStore'
@@ -175,7 +181,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     const records = loadAllGameRecords()
     const meta = loadScanMeta()
     const partialReport = buildInsightsReport(records, meta.lastScanTime)
-    return { ...partialReport, topFindings: synthesizeTopFindings(partialReport) }
+    return { ...partialReport, topFindings: synthesizeTopFindings(partialReport), staleSchema: isSchemaStale() }
   })
 
   ipcMain.handle(

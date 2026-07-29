@@ -20,7 +20,8 @@ const STALE_SCAN_MS = 24 * 60 * 60 * 1000
 export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps): JSX.Element {
   const hasReport = state.report !== null && state.report.gamesScanned > 0
   const lastScanTime = state.report?.lastScanTime ?? null
-  const isStale = lastScanTime !== null && Date.now() - lastScanTime > STALE_SCAN_MS
+  const staleSchema = state.report?.staleSchema ?? false
+  const isStale = staleSchema || (lastScanTime !== null && Date.now() - lastScanTime > STALE_SCAN_MS)
 
   const [selectedMistake, setSelectedMistake] = useState<{ gameUrl: string; ply: number } | null>(null)
   const [mistakeDetail, setMistakeDetail] = useState<MistakeDetail | null>(null)
@@ -56,7 +57,13 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
       <div className="insights-header">
         <span className={`insights-last-scan${isStale ? ' stale' : ''}`}>
           {lastScanTime
-            ? `Scanned ${formatRelativeTime(lastScanTime)} · ${state.report?.gamesScanned} games${isStale ? ' — rescan to catch up' : ''}`
+            ? `Scanned ${formatRelativeTime(lastScanTime)} · ${state.report?.gamesScanned} games${
+                staleSchema
+                  ? ' — analysis improved, rescan to update'
+                  : isStale
+                    ? ' — rescan to catch up'
+                    : ''
+              }`
             : 'No scan yet'}
         </span>
 
