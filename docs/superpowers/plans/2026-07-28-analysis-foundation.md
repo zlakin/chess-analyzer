@@ -766,8 +766,23 @@ Update the `input()` helper — drop `isPotentialSacrifice`, add `seeCp: 0, isRe
   })
 
   it('does not call a defended pawn push brilliant', () => {
+    // secondBestMoverCp must be non-null and give a gap of at least the
+    // 100cp necessity threshold, or the `secondBestMoverCp !== null` clause
+    // blocks brilliant on its own and this test passes without ever
+    // reaching the SEE gate it exists to check. 30 - (-80) = 110 clears
+    // necessity while staying under the 150cp great threshold, leaving
+    // `seeCp: 0` as the sole blocker. Verified by mutation: remove the SEE
+    // condition from classifyMove and this test must fail.
     expect(
-      classifyMove(input({ isBestMove: true, seeCp: 0, evalBeforeMoverCp: 30 }))
+      classifyMove(
+        input({
+          isBestMove: true,
+          seeCp: 0,
+          evalBeforeMoverCp: 30,
+          evalAfterMoverCp: 20,
+          secondBestMoverCp: -80
+        })
+      )
     ).toBe('best')
   })
 
