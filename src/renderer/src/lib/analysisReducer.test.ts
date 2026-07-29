@@ -10,7 +10,9 @@ const fakePosition: AnalyzedPosition = {
   moveUci: 'e2e4',
   fenBefore: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
   fenAfter: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
-  isPotentialSacrifice: false
+  seeCp: 0,
+  isCapture: false,
+  legalMoveCount: 20
 }
 
 const fakeMove: AnalyzedMove = {

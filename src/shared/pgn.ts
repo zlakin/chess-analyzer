@@ -1,8 +1,11 @@
 import { Chess } from 'chess.js'
 import type { AnalyzedPosition } from './types'
+import { staticExchangeEval } from './analysis/see'
 
 export class PgnParseError extends Error {}
 
+// Also used by tacticDetector.ts's hung-piece detection, independent of the
+// SEE-based sacrifice signal below.
 export const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
 
 export function parsePgn(pgn: string): AnalyzedPosition[] {
@@ -20,24 +23,19 @@ export function parsePgn(pgn: string): AnalyzedPosition[] {
   }
 
   return moves.map((move, index) => {
-    const ply = index + 1
-    const moveNumber = Math.floor(index / 2) + 1
-    const opponentColor = move.color === 'w' ? 'b' : 'w'
-    const capturedValue = move.captured ? PIECE_VALUES[move.captured] : 0
-    const movedValue = PIECE_VALUES[move.piece]
-    const afterPosition = new Chess(move.after)
-    const isPotentialSacrifice =
-      capturedValue < movedValue && afterPosition.isAttacked(move.to, opponentColor)
+    const beforePosition = new Chess(move.before)
 
     return {
-      ply,
-      moveNumber,
+      ply: index + 1,
+      moveNumber: Math.floor(index / 2) + 1,
       color: move.color,
       san: move.san,
       moveUci: `${move.from}${move.to}${move.promotion ?? ''}`,
       fenBefore: move.before,
       fenAfter: move.after,
-      isPotentialSacrifice
+      seeCp: staticExchangeEval(move.before, move.from, move.to),
+      isCapture: move.captured !== undefined,
+      legalMoveCount: beforePosition.moves().length
     }
   })
 }

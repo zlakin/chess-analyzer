@@ -18,7 +18,12 @@ export interface AnalyzedPosition {
   moveUci: string
   fenBefore: string
   fenAfter: string
-  isPotentialSacrifice: boolean
+  /** Static exchange evaluation of this move, in centipawns. Negative means
+   *  the move gives up material on its destination square. */
+  seeCp: number
+  isCapture: boolean
+  /** Legal moves available to the mover in `fenBefore`. 1 means forced. */
+  legalMoveCount: number
 }
 
 export interface EngineLine {

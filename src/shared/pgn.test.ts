@@ -21,37 +21,48 @@ describe('parsePgn', () => {
     expect(positions[0].fenAfter).toBe(positions[1].fenBefore)
   })
 
-  it('flags a piece sacrifice landing on an attacked square', () => {
+  it('reports a clearly negative SEE for a real piece sacrifice', () => {
     const sacrificePgn = '1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 d5 5. exd5 Nxd5 6. Nxf7'
     const positions = parsePgn(sacrificePgn)
     const knightSac = positions[positions.length - 1]
     expect(knightSac.san).toBe('Nxf7')
-    expect(knightSac.isPotentialSacrifice).toBe(true)
+    // Wins a pawn, loses a knight.
+    expect(knightSac.seeCp).toBe(-220)
   })
 
-  it('does not flag an even trade as a sacrifice', () => {
+  it('does not treat a minor-piece trade as a sacrifice', () => {
     const evenTradePgn = '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6'
     const positions = parsePgn(evenTradePgn)
     const trade = positions[positions.length - 1]
     expect(trade.san).toBe('Bxc6')
-    expect(trade.isPotentialSacrifice).toBe(false)
+    // A bishop (330) for a knight (320) is -10 -- slightly negative, but
+    // nowhere near the -150 threshold that makes a move a sacrifice. This
+    // is why the threshold is not simply "SEE < 0".
+    expect(trade.seeCp).toBe(-10)
+    expect(trade.seeCp).toBeGreaterThan(-150)
   })
 
-  it('flags 3...a6 in the Ruy Lopez as a "potential sacrifice" (coarse heuristic, by design)', () => {
-    // This is the root cause behind the false-positive "brilliant"
-    // classification the final review found: a6 is a completely standard
-    // theoretical move, but its destination square is attacked by the
-    // bishop on b5, and this heuristic treats "non-capturing move to an
-    // attacked square" as a potential sacrifice regardless of piece value.
-    // The fix lives in the opening book (src/shared/analysis/openingBook.ts),
-    // which now covers this line so classifyMove tags a6 "book" before it
-    // ever reaches the sacrifice/brilliant path -- see
-    // src/main/analysis/classification.test.ts and
-    // src/shared/analysis/openingBook.test.ts. This test just documents and
-    // locks in the heuristic's actual (coarse, v1) behavior.
+  it('does not treat 3...a6 in the Ruy Lopez as a sacrifice (regression)', () => {
+    // The old heuristic was `capturedValue < movedValue && isAttacked(to)`,
+    // which for any non-capturing pawn move reduces to `0 < 1 && attacked` --
+    // so every pawn push to a covered square looked like a sacrifice, and a
+    // best-move pawn push outside the opening book got classified
+    // "Brilliant". The book was padded with extra theory to paper over this;
+    // SEE fixes it at the source. a6 captures nothing and hangs nothing.
     const positions = parsePgn(SAMPLE_PGN)
     const a6 = positions.find((p) => p.san === 'a6')
-    expect(a6?.isPotentialSacrifice).toBe(true)
+    expect(a6?.seeCp).toBe(0)
+  })
+
+  it('reports capture and legal-move-count metadata', () => {
+    const positions = parsePgn('1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6')
+    const capture = positions[positions.length - 1]
+    expect(capture.isCapture).toBe(true)
+    expect(capture.legalMoveCount).toBe(32)
+
+    const opening = positions[0]
+    expect(opening.isCapture).toBe(false)
+    expect(opening.legalMoveCount).toBe(20)
   })
 
   it('throws PgnParseError for malformed PGN', () => {

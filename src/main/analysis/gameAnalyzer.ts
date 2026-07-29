@@ -4,6 +4,11 @@ import { classifyMove } from './classification'
 import { isBookMove } from '../../shared/analysis/openingBook'
 import { moveAccuracy, gameAccuracy } from './accuracy'
 
+// A sacrifice is giving up material, not merely moving somewhere defended.
+// One and a half pawns is enough to exclude the exchange sac's small change
+// while still catching a genuine piece offer.
+const SACRIFICE_SEE_THRESHOLD = -150
+
 export interface EvaluationEngine {
   evaluatePosition(
     fen: string,
@@ -78,7 +83,7 @@ export async function analyzeGame(
           cpLoss: delta.cpLoss,
           isBestMove: delta.isBestMove,
           isBookMove: isBookMove(sanHistory, position.ply),
-          isPotentialSacrifice: position.isPotentialSacrifice,
+          isPotentialSacrifice: position.seeCp <= SACRIFICE_SEE_THRESHOLD,
           evalBeforeMoverCp: delta.evalBeforeMoverCp,
           secondBestMoverCp: delta.secondBestMoverCp
         })

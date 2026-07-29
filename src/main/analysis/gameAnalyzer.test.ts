@@ -15,7 +15,9 @@ const positions: AnalyzedPosition[] = [
     moveUci: 'e2e4',
     fenBefore: START_FEN,
     fenAfter: AFTER_E4_FEN,
-    isPotentialSacrifice: false
+    seeCp: 0,
+    isCapture: false,
+    legalMoveCount: 20
   },
   {
     ply: 2,
@@ -25,7 +27,9 @@ const positions: AnalyzedPosition[] = [
     moveUci: 'e7e5',
     fenBefore: AFTER_E4_FEN,
     fenAfter: AFTER_E5_FEN,
-    isPotentialSacrifice: false
+    seeCp: 0,
+    isCapture: false,
+    legalMoveCount: 20
   }
 ]
 
