@@ -1,5 +1,5 @@
 import type { AnalyzedPosition, AnalyzedMove, GameAnalysisResult, PositionEvaluation } from '../../shared/types'
-import { computeMoveEvalDelta } from '../../shared/engineMath'
+import { computeMoveEvalDelta, winPercent } from '../../shared/engineMath'
 import { classifyMove } from './classification'
 import { isBookMove } from '../../shared/analysis/openingBook'
 import { moveAccuracy, gameAccuracy } from './accuracy'
@@ -115,8 +115,19 @@ export async function analyzeGame(
       }
 
       if (nextToFlush === fens.length) {
-        const whiteAccuracy = gameAccuracy(moves.filter((m) => m.color === 'w').map((m) => m.accuracy))
-        const blackAccuracy = gameAccuracy(moves.filter((m) => m.color === 'b').map((m) => m.accuracy))
+        const winPercents = fens.map((fen, i) => {
+          const evaluation = results[i]
+          if (!evaluation || evaluation.lines.length === 0) return 50
+          const moverWinPercent = winPercent(evaluation.lines[0])
+          // Every evaluation is from the side to move's perspective; the
+          // accuracy model needs one consistent (White) perspective.
+          return fen.split(' ')[1] === 'w' ? moverWinPercent : 100 - moverWinPercent
+        })
+
+        const { white: whiteAccuracy, black: blackAccuracy } = gameAccuracy({
+          winPercents,
+          moves: moves.map((m) => ({ accuracy: m.accuracy, color: m.color }))
+        })
         finishOnce(() => resolve({ moves, whiteAccuracy, blackAccuracy }))
       }
     }
