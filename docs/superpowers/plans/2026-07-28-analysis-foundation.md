@@ -747,6 +747,11 @@ Update the `input()` helper — drop `isPotentialSacrifice`, add `seeCp: 0, isRe
   })
 
   it('does not call a sacrifice brilliant when the position collapses after it', () => {
+    // secondBestMoverCp is -60, giving a 110cp gap: above the 100cp
+    // necessity threshold (so the sacrifice still reads as necessary and
+    // the collapse guard is the ONLY thing blocking brilliant), but below
+    // the 150cp great threshold (so the move does not fall through into
+    // "great" and mask what this test is checking).
     expect(
       classifyMove(
         input({
@@ -754,7 +759,7 @@ Update the `input()` helper — drop `isPotentialSacrifice`, add `seeCp: 0, isRe
           seeCp: -300,
           evalBeforeMoverCp: 50,
           evalAfterMoverCp: -400,
-          secondBestMoverCp: -200
+          secondBestMoverCp: -60
         })
       )
     ).toBe('best')
