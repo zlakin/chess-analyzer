@@ -5,6 +5,7 @@ import type { MoveEvalDelta } from '../../shared/engineMath'
 function delta(overrides: Partial<MoveEvalDelta>): MoveEvalDelta {
   return {
     cpLoss: 0,
+    winPercentLoss: 0,
     evalBeforeMoverCp: 20,
     evalAfterMoverCp: 20,
     secondBestMoverCp: null,

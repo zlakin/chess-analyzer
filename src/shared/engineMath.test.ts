@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { effectiveCp, cpToWinPercent, computeMoveEvalDelta } from './engineMath'
+import { effectiveCp, cpToWinPercent, winPercent, computeMoveEvalDelta } from './engineMath'
 import type { EngineLine, PositionEvaluation } from './types'
 
 function line(overrides: Partial<EngineLine>): EngineLine {
@@ -102,5 +102,61 @@ describe('computeMoveEvalDelta', () => {
     const delta = computeMoveEvalDelta(evalBefore, evalAfter, 'e2e4')
     expect(delta.isBestMove).toBe(false)
     expect(Number.isFinite(delta.evalBeforeMoverCp)).toBe(true)
+  })
+})
+
+describe('winPercent', () => {
+  it('matches cpToWinPercent for a normal centipawn score', () => {
+    expect(winPercent(line({ scoreCp: 150, scoreMate: null }))).toBeCloseTo(cpToWinPercent(150), 5)
+  })
+
+  it('saturates to 100 for any mate for the side to move', () => {
+    expect(winPercent(line({ scoreCp: null, scoreMate: 1 }))).toBe(100)
+    expect(winPercent(line({ scoreCp: null, scoreMate: 12 }))).toBe(100)
+  })
+
+  it('saturates to 0 for any mate against the side to move', () => {
+    expect(winPercent(line({ scoreCp: null, scoreMate: -1 }))).toBe(0)
+    expect(winPercent(line({ scoreCp: null, scoreMate: 0 }))).toBe(0)
+  })
+})
+
+describe('computeMoveEvalDelta win percent loss', () => {
+  it('reports a tiny win-percent loss for a big centipawn drop in a decided position', () => {
+    // The defect this whole change exists to fix: +2000 -> +1500 is a
+    // cpLoss of 500 but barely moves the win probability at all.
+    const evalBefore: PositionEvaluation = { lines: [line({ scoreCp: 2000, moveUci: 'a1a2' })] }
+    const evalAfter: PositionEvaluation = { lines: [line({ scoreCp: -1500, moveUci: 'h8h7' })] }
+
+    const delta = computeMoveEvalDelta(evalBefore, evalAfter, 'b1b2')
+
+    expect(delta.cpLoss).toBe(500)
+    expect(delta.winPercentLoss).toBeLessThan(1)
+  })
+
+  it('reports no win-percent loss for trading one forced mate for a longer one', () => {
+    const evalBefore: PositionEvaluation = { lines: [line({ scoreCp: null, scoreMate: 3, moveUci: 'a1a2' })] }
+    const evalAfter: PositionEvaluation = { lines: [line({ scoreCp: null, scoreMate: -8, moveUci: 'h8h7' })] }
+
+    expect(computeMoveEvalDelta(evalBefore, evalAfter, 'b1b2').winPercentLoss).toBe(0)
+  })
+
+  it('treats a move that ties the top line as best', () => {
+    const evalBefore: PositionEvaluation = {
+      lines: [line({ scoreCp: 30, moveUci: 'e2e4' }), line({ scoreCp: 30, moveUci: 'd2d4' })]
+    }
+    const evalAfter: PositionEvaluation = { lines: [line({ scoreCp: -30, moveUci: 'e7e5' })] }
+
+    const delta = computeMoveEvalDelta(evalBefore, evalAfter, 'd2d4')
+
+    expect(delta.isBestMove).toBe(true)
+    expect(delta.cpLoss).toBe(0)
+  })
+
+  it('does not treat a clearly inferior move as best', () => {
+    const evalBefore: PositionEvaluation = { lines: [line({ scoreCp: 40, moveUci: 'e2e4' })] }
+    const evalAfter: PositionEvaluation = { lines: [line({ scoreCp: 60, moveUci: 'a7a6' })] }
+
+    expect(computeMoveEvalDelta(evalBefore, evalAfter, 'a2a3').isBestMove).toBe(false)
   })
 })
