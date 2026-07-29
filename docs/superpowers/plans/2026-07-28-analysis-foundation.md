@@ -1278,31 +1278,52 @@ Measured on a Ryzen 7700X: 16MB/1-thread is 1.85 Mnps, 256MB/1-thread is 1.78 Mn
 
 - [ ] **Step 1: Write the failing tests**
 
-In `src/main/engine/stockfishManager.test.ts`, following the file's existing fake-spawn harness:
+In `src/main/engine/stockfishManager.test.ts`. The file already has
+`createFakeProcess()` returning `{ proc, stdout, stderr, written }`, where
+`written` is the array of commands sent to the engine, and its existing tests
+construct `new StockfishManager('/fake/path/to/stockfish', () => proc)`. Follow
+that shape exactly — pass the new options as a third constructor argument:
 
 ```ts
   it('sends Threads and Hash options during startup', async () => {
-    const { manager, sent } = harnessWithOptions({ threads: 4, hash: 256 })
+    const { proc, written } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc, {
+      threads: 4,
+      hash: 256
+    })
+
     await manager.start()
-    expect(sent).toContain('setoption name Threads value 4')
-    expect(sent).toContain('setoption name Hash value 256')
+
+    expect(written).toContain('setoption name Threads value 4')
+    expect(written).toContain('setoption name Hash value 256')
   })
 
   it('sends the options after uciok and before isready', async () => {
-    const { manager, sent } = harnessWithOptions({ threads: 4, hash: 256 })
+    const { proc, written } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc, {
+      threads: 4,
+      hash: 256
+    })
+
     await manager.start()
-    expect(sent.indexOf('setoption name Threads value 4')).toBeGreaterThan(sent.indexOf('uci'))
-    expect(sent.indexOf('setoption name Threads value 4')).toBeLessThan(sent.indexOf('isready'))
+
+    const threadsAt = written.indexOf('setoption name Threads value 4')
+    expect(threadsAt).toBeGreaterThan(written.indexOf('uci'))
+    expect(threadsAt).toBeLessThan(written.indexOf('isready'))
   })
 
   it('sends no options when none are configured', async () => {
-    const { manager, sent } = harnessWithOptions(undefined)
+    const { proc, written } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+
     await manager.start()
-    expect(sent.some((line) => line.startsWith('setoption name Threads'))).toBe(false)
+
+    expect(written.some((line) => line.startsWith('setoption name Threads'))).toBe(false)
+    expect(written.some((line) => line.startsWith('setoption name Hash'))).toBe(false)
   })
 ```
 
-`harnessWithOptions` mirrors the file's existing manager-construction helper, recording every `send`. In `src/main/engine/enginePool.test.ts`, extend the `poolSize` describe:
+In `src/main/engine/enginePool.test.ts`, extend the `poolSize` describe:
 
 ```ts
   it('caps at 12 on high core counts', () => {
