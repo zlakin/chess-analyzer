@@ -41,6 +41,17 @@ export function gameAccuracy(input: AccuracyInput): { white: number; black: numb
   const windowSize = clamp(Math.floor(winPercents.length / 10), 2, 8)
   const firstWindow = winPercents.slice(0, windowSize)
 
+  // The leading copies of the first window are not padding for its own sake:
+  // they make the window count line up exactly with the move count, which is
+  // what lets weights[i] belong to moves[i].
+  //
+  //   windows.length = (windowSize - 2) + (winPercents.length - windowSize + 1)
+  //                  = winPercents.length - 1
+  //                  = moves.length
+  //
+  // Do not "simplify" the windowSize - 2 away as an off-by-two; it is load
+  // bearing. Because that invariant always holds, the Math.min clamp and the
+  // ?? fallback below are unreachable defence-in-depth, not live branches.
   const windows: number[][] = []
   for (let i = 0; i < windowSize - 2; i++) windows.push(firstWindow)
   for (let i = 0; i + windowSize <= winPercents.length; i++) {
@@ -59,6 +70,9 @@ export function gameAccuracy(input: AccuracyInput): { white: number; black: numb
     if (entries.length === 0) return 100
 
     const totalWeight = entries.reduce((sum, e) => sum + e.weight, 0)
+    // Every weight is clamped to a floor of 0.5 above, and entries is
+    // non-empty here, so totalWeight > 0 always holds; the else branch is
+    // unreachable defence-in-depth against a future change to that floor.
     const weightedMean =
       totalWeight > 0
         ? entries.reduce((sum, e) => sum + e.accuracy * e.weight, 0) / totalWeight
