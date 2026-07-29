@@ -80,7 +80,7 @@ export async function analyzeGame(
         const position = positions[nextToFlush - 1]
         const delta = computeMoveEvalDelta(previousEval!, currentEval, position.moveUci)
         const classification = classifyMove({
-          cpLoss: delta.cpLoss,
+          winPercentLoss: delta.winPercentLoss,
           isBestMove: delta.isBestMove,
           isBookMove: isBookMove(sanHistory, position.ply),
           isPotentialSacrifice: position.seeCp <= SACRIFICE_SEE_THRESHOLD,

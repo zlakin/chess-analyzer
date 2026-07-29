@@ -1,7 +1,7 @@
 import type { MoveClassification } from '../../shared/types'
 
 export interface ClassifyMoveInput {
-  cpLoss: number
+  winPercentLoss: number
   isBestMove: boolean
   isBookMove: boolean
   isPotentialSacrifice: boolean
@@ -9,11 +9,17 @@ export interface ClassifyMoveInput {
   secondBestMoverCp: number | null
 }
 
-const CP_LOSS_TIERS: Array<{ max: number; label: MoveClassification }> = [
-  { max: 20, label: 'excellent' },
-  { max: 50, label: 'good' },
-  { max: 100, label: 'inaccuracy' },
-  { max: 200, label: 'mistake' },
+// Tiers are in win percent lost, not centipawns. These are the previous
+// centipawn boundaries (20/50/100/200) converted at an evaluation of 0, so
+// balanced positions classify exactly as before -- what changes is decided
+// positions and mate sequences, where a centipawn delta stopped meaning
+// anything. A +2000 -> +1500 move used to be a "blunder" that scored 98.5%
+// accurate at the same time.
+const WIN_PERCENT_LOSS_TIERS: Array<{ max: number; label: MoveClassification }> = [
+  { max: 2, label: 'excellent' },
+  { max: 5, label: 'good' },
+  { max: 10, label: 'inaccuracy' },
+  { max: 20, label: 'mistake' },
   { max: Infinity, label: 'blunder' }
 ]
 
@@ -36,6 +42,6 @@ export function classifyMove(input: ClassifyMoveInput): MoveClassification {
     return 'best'
   }
 
-  const tier = CP_LOSS_TIERS.find((t) => input.cpLoss <= t.max)
+  const tier = WIN_PERCENT_LOSS_TIERS.find((t) => input.winPercentLoss <= t.max)
   return tier ? tier.label : 'blunder'
 }
