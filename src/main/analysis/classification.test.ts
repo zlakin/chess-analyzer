@@ -91,8 +91,24 @@ describe('classifyMove', () => {
   })
 
   it('does not call a defended pawn push brilliant', () => {
+    // secondBestMoverCp is -80, not left at the input() default of null: a
+    // null second-best would fail the brilliant check on its own (the
+    // necessity clause requires secondBestMoverCp !== null), which would
+    // mask seeCp as the actual reason this isn't brilliant. -80 gives a gap
+    // of 110 -- at or above BRILLIANT_NECESSITY_GAP_CP (100), so necessity
+    // is satisfied, and below GREAT_MOVE_GAP_CP (150), so it doesn't fall
+    // through into 'great' either -- leaving seeCp: 0 (not a sacrifice) as
+    // the sole reason this move isn't brilliant.
     expect(
-      classifyMove(input({ isBestMove: true, seeCp: 0, evalBeforeMoverCp: 30 }))
+      classifyMove(
+        input({
+          isBestMove: true,
+          seeCp: 0,
+          evalBeforeMoverCp: 30,
+          evalAfterMoverCp: 20,
+          secondBestMoverCp: -80
+        })
+      )
     ).toBe('best')
   })
 

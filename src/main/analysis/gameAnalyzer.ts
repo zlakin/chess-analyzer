@@ -75,6 +75,13 @@ export async function analyzeGame(
         const position = positions[nextToFlush - 1]
         const delta = computeMoveEvalDelta(previousEval!, currentEval, position.moveUci)
 
+        // On ply 1 there is no previous move to recapture on, so
+        // positions[nextToFlush - 2] is undefined -- that's the mover's very
+        // first move of the game, not a missing element, and must not be
+        // treated as a recapture. Comparing UCI destination squares (chars
+        // 2-4) is what "recapture" means here: this move is a capture that
+        // landed on the exact square the opponent's last move landed on,
+        // i.e. it took back the piece that just took something.
         const previousPosition = positions[nextToFlush - 2]
         const isRecapture =
           position.isCapture &&
