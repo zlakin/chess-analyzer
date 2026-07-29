@@ -9,8 +9,11 @@ function input(overrides: Partial<ClassifyMoveInput>): ClassifyMoveInput {
     winPercentLoss: 0,
     isBestMove: true,
     isBookMove: false,
-    isPotentialSacrifice: false,
+    seeCp: 0,
+    isRecapture: false,
+    legalMoveCount: 30,
     evalBeforeMoverCp: 20,
+    evalAfterMoverCp: 20,
     secondBestMoverCp: null,
     ...overrides
   }
@@ -25,15 +28,89 @@ describe('classifyMove', () => {
     expect(classifyMove(input({ isBestMove: true }))).toBe('best')
   })
 
-  it('classifies a sacrifice-and-best move in a balanced position as brilliant', () => {
+  it('classifies a necessary, working sacrifice in a balanced position as brilliant', () => {
     expect(
-      classifyMove(input({ isBestMove: true, isPotentialSacrifice: true, evalBeforeMoverCp: 50 }))
+      classifyMove(
+        input({
+          isBestMove: true,
+          seeCp: -300,
+          evalBeforeMoverCp: 50,
+          evalAfterMoverCp: 40,
+          secondBestMoverCp: -200
+        })
+      )
     ).toBe('brilliant')
   })
 
   it('does not call an obviously winning sacrifice brilliant', () => {
     expect(
-      classifyMove(input({ isBestMove: true, isPotentialSacrifice: true, evalBeforeMoverCp: 900 }))
+      classifyMove(
+        input({
+          isBestMove: true,
+          seeCp: -300,
+          evalBeforeMoverCp: 900,
+          evalAfterMoverCp: 880,
+          secondBestMoverCp: 700
+        })
+      )
+    ).toBe('best')
+  })
+
+  it('does not call a sacrifice brilliant when a quiet move was just as good', () => {
+    expect(
+      classifyMove(
+        input({
+          isBestMove: true,
+          seeCp: -300,
+          evalBeforeMoverCp: 50,
+          evalAfterMoverCp: 40,
+          secondBestMoverCp: 20
+        })
+      )
+    ).toBe('best')
+  })
+
+  it('does not call a sacrifice brilliant when the position collapses after it', () => {
+    // secondBestMoverCp is -60, not -200: a gap that far past evalBeforeMoverCp
+    // (50) would also clear GREAT_MOVE_GAP_CP once the brilliant gate falls
+    // through, masking the thing this test checks. -60 keeps the gap (110)
+    // above BRILLIANT_NECESSITY_GAP_CP -- so necessity alone would have let
+    // this through -- while staying under GREAT_MOVE_GAP_CP, so the eval-after
+    // collapse is the only thing keeping this out of 'brilliant' and 'great'.
+    expect(
+      classifyMove(
+        input({
+          isBestMove: true,
+          seeCp: -300,
+          evalBeforeMoverCp: 50,
+          evalAfterMoverCp: -400,
+          secondBestMoverCp: -60
+        })
+      )
+    ).toBe('best')
+  })
+
+  it('does not call a defended pawn push brilliant', () => {
+    expect(
+      classifyMove(input({ isBestMove: true, seeCp: 0, evalBeforeMoverCp: 30 }))
+    ).toBe('best')
+  })
+
+  it('does not call a recapture great', () => {
+    // After losing a queen, recapturing clears the 150cp gap to second-best
+    // trivially -- every recapture in every game used to qualify.
+    expect(
+      classifyMove(
+        input({ isBestMove: true, isRecapture: true, evalBeforeMoverCp: -300, secondBestMoverCp: -1100 })
+      )
+    ).toBe('best')
+  })
+
+  it('does not call a forced move great', () => {
+    expect(
+      classifyMove(
+        input({ isBestMove: true, legalMoveCount: 1, evalBeforeMoverCp: 50, secondBestMoverCp: -150 })
+      )
     ).toBe('best')
   })
 
@@ -79,16 +156,16 @@ describe('classifyMove', () => {
   it('does not classify 3...a6 in the Ruy Lopez as brilliant (regression)', () => {
     // Reproduces the false-positive from the final review: in a standard
     // Ruy Lopez (1.e4 e5 2.Nf3 Nc6 3.Bb5 a6), a6's destination square is
-    // "attacked" by the bishop on b5, so the coarse sacrifice heuristic in
-    // src/shared/pgn.ts's isPotentialSacrifice flags it as a
-    // potential sacrifice (verified directly by
-    // src/shared/pgn.test.ts and by driving the real analyzeGame
-    // pipeline with the real Stockfish binary). If it's also the engine's
-    // top choice in a non-critical position and the opening book doesn't
-    // cover it, classifyMove falls through to the brilliant path. The book
-    // must cover this exact, extremely standard line so isBookMove is true
-    // and classifyMove short-circuits to "book" before ever reaching the
-    // sacrifice/brilliant branch.
+    // "attacked" by the bishop on b5, so src/shared/pgn.ts's seeCp
+    // computation flags it as a losing exchange, i.e. a potential sacrifice
+    // by the SACRIFICE_SEE_THRESHOLD applied in classification.ts (verified
+    // directly by src/shared/pgn.test.ts and by driving the real
+    // analyzeGame pipeline with the real Stockfish binary). If it's also
+    // the engine's top choice in a non-critical position and the opening
+    // book doesn't cover it, classifyMove falls through to the brilliant
+    // path. The book must cover this exact, extremely standard line so
+    // isBookMove is true and classifyMove short-circuits to "book" before
+    // ever reaching the sacrifice/brilliant branch.
     const sanHistory = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6']
     const a6Ply = 6
     expect(isBookMove(sanHistory, a6Ply)).toBe(true)
@@ -97,7 +174,7 @@ describe('classifyMove', () => {
       input({
         isBestMove: true,
         isBookMove: isBookMove(sanHistory, a6Ply),
-        isPotentialSacrifice: true,
+        seeCp: -300,
         evalBeforeMoverCp: 30
       })
     )
