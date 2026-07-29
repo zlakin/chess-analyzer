@@ -384,7 +384,12 @@ export function staticExchangeEval(fen: string, from: Square, to: Square): numbe
     gains[d - 1] = -Math.max(-gains[d - 1], gains[d])
   }
 
-  return gains[0]
+  // Negating a zero above yields JavaScript's -0, and Vitest's toBe uses
+  // Object.is, where Object.is(-0, 0) is false -- so an even trade would
+  // fail a `.toBe(0)` assertion despite being numerically correct. Normalize
+  // once at the boundary; -0 is transparent to every arithmetic operation
+  // above it, so nothing earlier needs to care.
+  return gains[0] === 0 ? 0 : gains[0]
 }
 ```
 
