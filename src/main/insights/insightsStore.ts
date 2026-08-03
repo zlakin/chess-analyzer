@@ -9,6 +9,15 @@ import type { GameInsightRecord, ScanMeta } from '../../shared/types'
 // evaluation, so version-1 mistakes were selected by different rules.
 export const CURRENT_SCHEMA_VERSION = 2
 
+// The number of most-recent games a scan fetches -- see
+// fetchRecentGames(username, SCAN_GAME_LIMIT) in scanRunner.ts -- and
+// therefore the only records isSchemaStale() below can ever expect a
+// rescan to rebuild. Defined here rather than in scanRunner.ts because
+// scanRunner.ts already imports from this module; the reverse direction
+// would create an import cycle. scanRunner.ts imports it back from here so
+// there is exactly one definition of the value.
+export const SCAN_GAME_LIMIT = 100
+
 function defaultScanMeta(): ScanMeta {
   return { username: null, lastScanTime: null, scannedUrls: [], schemaVersion: CURRENT_SCHEMA_VERSION }
 }
@@ -116,13 +125,25 @@ export function ensureSchemaVersion(): void {
   saveScanMeta({ schemaVersion: CURRENT_SCHEMA_VERSION })
 }
 
-// O(n) file reads, same as loadAllGameRecords() itself -- acceptable
-// because the only caller (getInsightsReport) already pays that cost every
-// time it builds a report, so this doesn't add a new pass over disk in
-// practice. Not cached: the cache would need invalidating on every
-// saveGameRecord(), which is unwarranted complexity for a read this cheap.
+// Only asks about the newest SCAN_GAME_LIMIT records -- the ones a rescan
+// can actually reach (fetchRecentGames(username, SCAN_GAME_LIMIT) in
+// scanRunner.ts never refetches anything older). A user who scanned
+// SCAN_GAME_LIMIT games long ago and has since played hundreds more would
+// otherwise have old records stuck below CURRENT_SCHEMA_VERSION forever,
+// with no rescan able to touch them, leaving the "rescan to update" banner
+// on permanently. Copies before sorting: loadAllGameRecords() hands back a
+// fresh array each call, but .sort() mutates in place and a future caller
+// might not expect that. Same O(n) file-read cost as loadAllGameRecords()
+// itself -- acceptable because the only caller (getInsightsReport) already
+// pays that cost every time it builds a report, so this doesn't add a new
+// pass over disk in practice. Not cached: the cache would need
+// invalidating on every saveGameRecord(), which is unwarranted complexity
+// for a read this cheap.
 export function isSchemaStale(): boolean {
-  return loadAllGameRecords().some((record) => (record.schemaVersion ?? 1) < CURRENT_SCHEMA_VERSION)
+  return [...loadAllGameRecords()]
+    .sort((a, b) => b.endTime - a.endTime)
+    .slice(0, SCAN_GAME_LIMIT)
+    .some((record) => (record.schemaVersion ?? 1) < CURRENT_SCHEMA_VERSION)
 }
 
 export function saveGameRecord(record: GameInsightRecord): void {

@@ -22,7 +22,14 @@ vi.mock('./insightsStore', () => ({
   // constant to stamp every record it builds -- the mock above replaces the
   // whole module, so it has to be supplied here too or that import resolves
   // to undefined. The exact number doesn't matter to any assertion below.
-  CURRENT_SCHEMA_VERSION: 2
+  CURRENT_SCHEMA_VERSION: 2,
+  // scanRunner.ts now imports its game-fetch limit from insightsStore.ts
+  // (moved there so isSchemaStale() and runScan() share one definition
+  // instead of duplicating the number) -- same reasoning as
+  // CURRENT_SCHEMA_VERSION above: the mock replaces the whole module, so
+  // this must be supplied too. The exact number doesn't matter to any
+  // assertion below.
+  SCAN_GAME_LIMIT: 100
 }))
 
 import { runScan } from './scanRunner'

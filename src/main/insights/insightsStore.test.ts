@@ -23,15 +23,16 @@ import {
   ensureUsernameScope,
   ensureSchemaVersion,
   isSchemaStale,
-  CURRENT_SCHEMA_VERSION
+  CURRENT_SCHEMA_VERSION,
+  SCAN_GAME_LIMIT
 } from './insightsStore'
 import type { GameInsightRecord } from '../../shared/types'
 import { createHash } from 'node:crypto'
 
-function recordFor(gameUrl: string): GameInsightRecord {
+function recordFor(gameUrl: string, endTime = 1000): GameInsightRecord {
   return {
     gameUrl,
-    endTime: 1000,
+    endTime,
     timeControlCategory: 'rapid',
     userColor: 'w',
     opponentUsername: 'opponent',
@@ -178,6 +179,43 @@ describe('insightsStore', () => {
 
     expect(isSchemaStale()).toBe(true)
     expect(loadScanMeta().schemaVersion).toBe(storedVersionBefore)
+  })
+
+  it('treats a stale record inside the reachable rescan window as stale', () => {
+    // A rescan only ever refetches the newest SCAN_GAME_LIMIT games (see
+    // fetchRecentGames(username, SCAN_GAME_LIMIT) in scanRunner.ts), so a
+    // stale record within that window is exactly the case a rescan is
+    // supposed to fix -- the banner must still fire for it. Filling the
+    // window exactly to SCAN_GAME_LIMIT records (rather than fewer) proves
+    // the windowing logic isn't just trivially passing every record through.
+    for (let i = 0; i < SCAN_GAME_LIMIT; i++) {
+      saveGameRecord({
+        ...recordFor(`https://example.com/window-${i}`, i + 1),
+        schemaVersion: i === 40 ? 1 : CURRENT_SCHEMA_VERSION
+      })
+    }
+
+    expect(isSchemaStale()).toBe(true)
+  })
+
+  it('ignores a stale record older than the newest SCAN_GAME_LIMIT games, since a rescan can never reach it', () => {
+    // Regression test: isSchemaStale() used to scan every record on disk,
+    // so a user who scanned SCAN_GAME_LIMIT games long ago and has since
+    // played hundreds more would see the "rescan to update" banner forever
+    // -- a rescan only ever refetches the newest SCAN_GAME_LIMIT games, so
+    // those older records can never be rebuilt no matter how many times the
+    // user rescans. The oldest 10 records (by endTime) are stale; the
+    // newest SCAN_GAME_LIMIT are all current, so the reachable window is
+    // entirely up to date.
+    const totalRecords = SCAN_GAME_LIMIT + 10
+    for (let i = 0; i < totalRecords; i++) {
+      saveGameRecord({
+        ...recordFor(`https://example.com/outside-${i}`, i + 1),
+        schemaVersion: i < 10 ? 1 : CURRENT_SCHEMA_VERSION
+      })
+    }
+
+    expect(isSchemaStale()).toBe(false)
   })
 
   it('treats a record written under an older schema as unscanned so a rescan rebuilds it', () => {
