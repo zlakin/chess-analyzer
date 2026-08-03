@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { cpus } from 'node:os'
 import { StockfishManager } from './stockfishManager'
 import type { SpawnFn } from './stockfishManager'
 import { getStockfishBinaryPath } from './stockfishPath'
@@ -11,7 +12,14 @@ async function getEngine(spawnFn: SpawnFn): Promise<StockfishManager> {
   if (engine) return engine
   if (!starting) {
     starting = (async () => {
-      const instance = new StockfishManager(getStockfishBinaryPath(), spawnFn)
+      // The exploration engine serves one position at a time for the
+      // interactive board and for puzzle grading, so unlike the pool it
+      // should use real thread parallelism. Half the machine leaves room for
+      // the UI and for an analysis pool running alongside it.
+      const instance = new StockfishManager(getStockfishBinaryPath(), spawnFn, {
+        threads: Math.max(1, Math.floor(cpus().length / 2)),
+        hash: 256
+      })
       await instance.start()
       engine = instance
       return instance

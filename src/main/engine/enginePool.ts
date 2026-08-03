@@ -11,8 +11,18 @@ export interface EnginePool {
   stop(): void
 }
 
+// Each pooled engine runs single-threaded on purpose: parallelism comes from
+// running `size` of them across different positions, which scales better than
+// one engine searching one position on many threads.
+const MAX_POOL_SIZE = 12
+const POOL_HASH_BUDGET_MB = 1024
+
 export function poolSize(cpuCount: number): number {
-  return Math.max(1, Math.min(6, cpuCount - 2))
+  return Math.max(1, Math.min(MAX_POOL_SIZE, cpuCount - 2))
+}
+
+export function poolHashMb(size: number): number {
+  return Math.max(16, Math.min(256, Math.floor(POOL_HASH_BUDGET_MB / Math.max(1, size))))
 }
 
 export async function createEnginePool(

@@ -47,6 +47,46 @@ describe('StockfishManager', () => {
     expect(written).toContain('ucinewgame\n')
   })
 
+  it('sends Threads and Hash options during startup', async () => {
+    const { proc, written } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc, {
+      threads: 4,
+      hash: 256
+    })
+
+    await manager.start()
+
+    // The fake process's stdin.write() records exactly what StockfishManager
+    // hands it, including the trailing newline send() appends to every
+    // command -- see the 'uci\n' / 'isready\n' assertions above.
+    expect(written).toContain('setoption name Threads value 4\n')
+    expect(written).toContain('setoption name Hash value 256\n')
+  })
+
+  it('sends the options after uciok and before isready', async () => {
+    const { proc, written } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc, {
+      threads: 4,
+      hash: 256
+    })
+
+    await manager.start()
+
+    const threadsAt = written.indexOf('setoption name Threads value 4\n')
+    expect(threadsAt).toBeGreaterThan(written.indexOf('uci\n'))
+    expect(threadsAt).toBeLessThan(written.indexOf('isready\n'))
+  })
+
+  it('sends no options when none are configured', async () => {
+    const { proc, written } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+
+    await manager.start()
+
+    expect(written.some((line) => line.startsWith('setoption name Threads'))).toBe(false)
+    expect(written.some((line) => line.startsWith('setoption name Hash'))).toBe(false)
+  })
+
   it('parses multipv evaluation lines and returns them sorted best-first', async () => {
     const { proc, stdout } = createFakeProcess()
     const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)

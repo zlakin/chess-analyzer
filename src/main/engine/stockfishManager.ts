@@ -4,6 +4,11 @@ import type { EngineLine, PositionEvaluation } from '../../shared/types'
 
 export type SpawnFn = (command: string, args: string[]) => ChildProcessWithoutNullStreams
 
+export interface EngineOptions {
+  threads?: number
+  hash?: number
+}
+
 export class StockfishManager {
   private process: ChildProcessWithoutNullStreams | null = null
   private lineBuffer = ''
@@ -12,7 +17,8 @@ export class StockfishManager {
 
   constructor(
     private readonly binaryPath: string,
-    private readonly spawnFn: SpawnFn = spawn as SpawnFn
+    private readonly spawnFn: SpawnFn = spawn as SpawnFn,
+    private readonly options: EngineOptions = {}
   ) {}
 
   async start(): Promise<void> {
@@ -25,6 +31,16 @@ export class StockfishManager {
     // engine indistinguishable from a slow one.
     proc.stderr.on('data', (chunk: Buffer) => this.onStderr(chunk))
     await this.sendAndWaitForLine('uci', (line) => line === 'uciok')
+    // Stockfish defaults to 1 thread and 16 MB of hash. Nothing in this
+    // codebase used to send any setoption but MultiPV, so every engine ran
+    // at those defaults -- on a single position that measures ~7.6x slower
+    // than the same engine given half the machine's threads.
+    if (this.options.threads !== undefined) {
+      this.send(`setoption name Threads value ${this.options.threads}`)
+    }
+    if (this.options.hash !== undefined) {
+      this.send(`setoption name Hash value ${this.options.hash}`)
+    }
     await this.sendAndWaitForLine('isready', (line) => line === 'readyok')
     this.send('ucinewgame')
   }

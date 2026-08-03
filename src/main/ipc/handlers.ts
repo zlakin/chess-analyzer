@@ -7,7 +7,7 @@ import type { AnalyzedPosition, Theme } from '../../shared/types'
 import { StockfishManager } from '../engine/stockfishManager'
 import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { evaluateExplorationPosition } from '../engine/explorationEngine'
-import { createEnginePool, poolSize } from '../engine/enginePool'
+import { createEnginePool, poolHashMb, poolSize } from '../engine/enginePool'
 import type { EnginePool } from '../engine/enginePool'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, fetchPlayerStats, ChessComFetchError } from '../chesscom/chessComClient'
@@ -55,7 +55,11 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       try {
         let pool: EnginePool
         try {
-          pool = await createEnginePool(poolSize(cpus().length), () => new StockfishManager(getStockfishBinaryPath()))
+          const size = poolSize(cpus().length)
+          pool = await createEnginePool(
+            size,
+            () => new StockfishManager(getStockfishBinaryPath(), undefined, { threads: 1, hash: poolHashMb(size) })
+          )
         } catch (err) {
           return { error: `Could not start Stockfish: ${(err as Error).message}` }
         }

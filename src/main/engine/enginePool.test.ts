@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createEnginePool, poolSize } from './enginePool'
+import { createEnginePool, poolHashMb, poolSize } from './enginePool'
 import type { PooledEngine } from './enginePool'
 import type { PositionEvaluation } from '../../shared/types'
 
@@ -33,9 +33,29 @@ describe('poolSize', () => {
     expect(poolSize(8)).toBe(6)
   })
 
-  it('caps at 6 regardless of cpu count', () => {
-    expect(poolSize(16)).toBe(6)
-    expect(poolSize(32)).toBe(6)
+  it('caps at 12 on high core counts', () => {
+    expect(poolSize(16)).toBe(12)
+    expect(poolSize(64)).toBe(12)
+  })
+
+  // poolSize(8) === 6 is already covered by 'scales as cpuCount - 2' above;
+  // the new coverage here is the boundary where scaling meets the new cap.
+  it('still scales as cpuCount - 2 below the cap', () => {
+    expect(poolSize(14)).toBe(12)
+  })
+})
+
+describe('poolHashMb', () => {
+  it('divides the shared hash budget evenly across the pool', () => {
+    expect(poolHashMb(12)).toBe(85)
+  })
+
+  it('floors at 16 MB so a large pool never gets an unusably small hash table', () => {
+    expect(poolHashMb(100)).toBe(16)
+  })
+
+  it('caps at 256 MB even for a tiny pool, since hash barely helps short searches', () => {
+    expect(poolHashMb(1)).toBe(256)
   })
 })
 
