@@ -160,23 +160,59 @@ describe('runScan', () => {
     expect(stop).toHaveBeenCalledOnce()
   })
 
-  it('reports an eta once at least one game has completed', async () => {
-    fetchRecentGamesMock.mockResolvedValue([
-      game('https://example.com/1'),
-      game('https://example.com/2')
-    ])
+  it('stops the pool when the scan is cancelled', async () => {
+    const stop = vi.fn()
+    fetchRecentGamesMock.mockResolvedValue([game('https://example.com/1'), game('https://example.com/2')])
     isGameScannedMock.mockReturnValue(false)
-    const progress: ScanProgress[] = []
 
     await runScan('testuser', {
-      createPool: async () => fakePool(),
-      onProgress: (p) => progress.push(p)
+      createPool: async () => ({ ...fakePool(), stop }),
+      isCancelled: () => true
     })
 
-    expect(progress[0].etaMs).toBeNull()
-    const last = progress[progress.length - 1]
-    expect(last.etaMs).not.toBeNull()
-    expect(typeof last.etaMs).toBe('number')
+    expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it('reports a null eta before any game has completed, then extrapolates from elapsed time per game', async () => {
+    vi.useFakeTimers()
+    try {
+      fetchRecentGamesMock.mockResolvedValue([
+        game('https://example.com/1'),
+        game('https://example.com/2')
+      ])
+      isGameScannedMock.mockReturnValue(false)
+      const progress: ScanProgress[] = []
+
+      // '1. e4 e5' parses to 2 positions, so analyzeGame (Task 2) dispatches
+      // exactly 3 concurrent evaluatePosition calls per game (fenBefore + 2
+      // fenAfter), all fired synchronously before any of them resolve.
+      // Advancing the fake clock by 1000ms on every 3rd call therefore
+      // advances it by exactly 1000ms per completed game, regardless of
+      // which of the 3 concurrent calls happens to be counted as the third.
+      let calls = 0
+      const timedPool = (): { evaluatePosition: () => Promise<PositionEvaluation>; stop: () => void } => ({
+        evaluatePosition: async () => {
+          calls += 1
+          if (calls % 3 === 0) vi.advanceTimersByTime(1000)
+          return { lines: [{ depth: 14, scoreCp: 20, scoreMate: null, moveUci: 'e2e4', pv: ['e2e4'] }] }
+        },
+        stop: () => {}
+      })
+
+      await runScan('testuser', {
+        createPool: async () => timedPool(),
+        onProgress: (p) => progress.push(p)
+      })
+
+      expect(progress[0]).toEqual({ scanned: 0, total: 2, etaMs: null })
+      // After game 1: elapsed = 1000ms, 1 game remaining -> etaMs = round((1000 / 1) * 1) = 1000.
+      // A hardcoded etaMs (e.g. always 0, or always null-checked-but-unused) cannot satisfy this.
+      expect(progress[1]).toEqual({ scanned: 1, total: 2, etaMs: 1000 })
+      // After game 2: elapsed = 2000ms, 0 games remaining -> etaMs = round((2000 / 2) * 0) = 0.
+      expect(progress[2]).toEqual({ scanned: 2, total: 2, etaMs: 0 })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('returns an error when the pool cannot start', async () => {

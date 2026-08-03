@@ -44,29 +44,39 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
 
   const startedAt = Date.now()
   let scanned = 0
+
+  // Shared by both call sites below so the scanned/elapsed -> etaMs
+  // extrapolation is defined exactly once; scanned is always >= 1 here
+  // because this only ever runs after the increment immediately above
+  // each call, so there is always at least one completed game to
+  // extrapolate the remaining time from.
+  const reportProgress = (): void => {
+    const elapsed = Date.now() - startedAt
+    options.onProgress?.({
+      scanned,
+      total: newGames.length,
+      etaMs: Math.round((elapsed / scanned) * (newGames.length - scanned))
+    })
+  }
+
   try {
     for (const game of newGames) {
       if (options.isCancelled?.()) return { cancelled: true }
 
       // A malformed PGN is a per-game data problem -- skip just this game
       // and keep going. An analyzeGame failure below is NOT caught here on
-      // purpose: it almost always means the shared Stockfish engine itself
-      // died, in which case every remaining game would fail too, so it's
-      // better to propagate and abort the scan (caught by the IPC handler
-      // in Task 13, surfaced as a clear error) than to silently burn
-      // through the rest of the list logging one failure per game.
+      // purpose: it almost always means an engine in the pool died, in
+      // which case every remaining game would fail too, so it's better to
+      // propagate and abort the scan (caught by the IPC handler in Task
+      // 13, surfaced as a clear error) than to silently burn through the
+      // rest of the list logging one failure per game.
       let positions
       try {
         positions = parsePgn(game.pgn)
       } catch (err) {
         console.error(`Skipping game ${game.url}: could not parse PGN`, err)
         scanned += 1
-        const elapsed = Date.now() - startedAt
-        options.onProgress?.({
-          scanned,
-          total: newGames.length,
-          etaMs: Math.round((elapsed / scanned) * (newGames.length - scanned))
-        })
+        reportProgress()
         continue
       }
 
@@ -78,12 +88,7 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
 
       saveGameRecord(extractInsightRecord(game, result, username))
       scanned += 1
-      const elapsed = Date.now() - startedAt
-      options.onProgress?.({
-        scanned,
-        total: newGames.length,
-        etaMs: Math.round((elapsed / scanned) * (newGames.length - scanned))
-      })
+      reportProgress()
     }
   } finally {
     pool.stop()

@@ -35,6 +35,18 @@ import type { MasteryNodeKey, MistakeDetail, PuzzleOutcome, SrsQuality } from '.
 
 const ANALYSIS_DEPTH_DEFAULT = 18
 
+// Shared by the analyzeGame and scanChessComGames handlers below so the
+// engine-pool sizing/threading/hash policy is expressed exactly once --
+// otherwise a partial edit to one call site would silently give the two
+// paths different engine configurations.
+function createDefaultPool(): Promise<EnginePool> {
+  const size = poolSize(cpus().length)
+  return createEnginePool(
+    size,
+    () => new StockfishManager(getStockfishBinaryPath(), undefined, { threads: 1, hash: poolHashMb(size) })
+  )
+}
+
 // Per-run cancellation state, not a single shared boolean: without this, a
 // cancel request racing against a newly-started analysis invocation could be
 // silently erased (see AnalysisRunTracker for details).
@@ -55,11 +67,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       try {
         let pool: EnginePool
         try {
-          const size = poolSize(cpus().length)
-          pool = await createEnginePool(
-            size,
-            () => new StockfishManager(getStockfishBinaryPath(), undefined, { threads: 1, hash: poolHashMb(size) })
-          )
+          pool = await createDefaultPool()
         } catch (err) {
           return { error: `Could not start Stockfish: ${(err as Error).message}` }
         }
@@ -164,13 +172,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     try {
       return await runScan(username, {
         isCancelled: () => scanRuns.isCancelled(runId),
-        createPool: () => {
-          const size = poolSize(cpus().length)
-          return createEnginePool(
-            size,
-            () => new StockfishManager(getStockfishBinaryPath(), undefined, { threads: 1, hash: poolHashMb(size) })
-          )
-        },
+        createPool: createDefaultPool,
         onProgress: (progress) => {
           getWindow()?.webContents.send(IPC_CHANNELS.scanProgress, progress)
         }
