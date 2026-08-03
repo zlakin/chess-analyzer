@@ -7,6 +7,7 @@ out/
 
 # Stockfish binary is downloaded by a setup script, not committed
 vendor/stockfish/
+vendor/stockfish-dist/
 
 .DS_Store
 *.log

@@ -14,6 +14,14 @@ vi.mock('electron', () => ({
   }
 }))
 
+// getStockfishBinaryPath() also refuses to return a path to a binary that is not
+// on disk, and /test/app-root is fictional, so the fake spawn below would never
+// be reached without this.
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return { ...actual, existsSync: () => true }
+})
+
 import {
   evaluateExplorationPosition,
   stopExplorationEngine,

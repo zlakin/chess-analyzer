@@ -12,12 +12,13 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "build:linux": "electron-vite build && electron-builder --linux pacman",
+    "build:linux": "npm run setup:stockfish:dist && electron-vite build && electron-builder --linux pacman",
     "start": "electron-vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
     "verify": "npm run typecheck && npm test",
-    "setup:stockfish": "node scripts/downloadStockfish.mjs"
+    "setup:stockfish": "node scripts/downloadStockfish.mjs",
+    "setup:stockfish:dist": "STOCKFISH_GENERIC=1 STOCKFISH_TARGET_DIR=vendor/stockfish-dist node scripts/downloadStockfish.mjs"
   },
   "build": {
     "appId": "com.studyroom.app",
@@ -31,7 +32,7 @@
     },
     "extraResources": [
       {
-        "from": "vendor/stockfish",
+        "from": "vendor/stockfish-dist",
         "to": "vendor/stockfish"
       }
     ],
