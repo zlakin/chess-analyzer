@@ -156,13 +156,14 @@ describe('insightsStore', () => {
       expect(loadAllGameRecords()).toHaveLength(1)
     })
 
-    it('does not delete cached records when the schema version is stale', () => {
+    it('does not delete cached records when the schema version is stale, but still persists the new version', () => {
       saveGameRecord(recordFor('https://example.com/1'))
       saveScanMeta({ schemaVersion: 1 })
 
       ensureSchemaVersion()
 
       expect(loadAllGameRecords()).toHaveLength(1)
+      expect(loadScanMeta().schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     })
   })
 
