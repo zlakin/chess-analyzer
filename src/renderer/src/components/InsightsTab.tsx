@@ -17,6 +17,12 @@ interface InsightsTabProps {
 // just reporting a fact the user has to notice is stale themselves.
 const STALE_SCAN_MS = 24 * 60 * 60 * 1000
 
+function formatEta(ms: number): string {
+  const minutes = Math.round(ms / 60000)
+  if (minutes >= 1) return `~${minutes} min`
+  return `~${Math.max(1, Math.round(ms / 1000))} sec`
+}
+
 export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps): JSX.Element {
   const hasReport = state.report !== null && state.report.gamesScanned > 0
   const lastScanTime = state.report?.lastScanTime ?? null
@@ -71,6 +77,7 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
           <div className="insights-scan-progress">
             <span>
               Scanning... {state.progress?.scanned ?? 0} / {state.progress?.total ?? 0}
+              {state.progress?.etaMs != null && ` · ${formatEta(state.progress.etaMs)} remaining`}
             </span>
             <progress value={state.progress?.scanned ?? 0} max={state.progress?.total || 1} />
             <button className="button-secondary" onClick={cancelScan}>

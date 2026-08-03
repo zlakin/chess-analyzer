@@ -258,6 +258,9 @@ export interface InsightsReport {
 export interface ScanProgress {
   scanned: number
   total: number
+  /** Estimated milliseconds remaining, or null before the first game
+   *  completes and there is nothing to extrapolate from. */
+  etaMs: number | null
 }
 
 export type ScanOutcome = { scanned: number } | { cancelled: true } | { error: string }

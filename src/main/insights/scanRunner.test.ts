@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { ChessComGameSummary, PositionEvaluation } from '../../shared/types'
+import type { ChessComGameSummary, PositionEvaluation, ScanProgress } from '../../shared/types'
 
 const fetchRecentGamesMock = vi.fn()
 const isGameScannedMock = vi.fn()
@@ -45,31 +45,15 @@ function game(url: string, pgn = '1. e4 e5'): ChessComGameSummary {
   }
 }
 
-function fakeEngine(): {
+function fakePool(): {
   evaluatePosition: () => Promise<PositionEvaluation>
-  start: () => Promise<void>
   stop: () => void
 } {
   return {
     evaluatePosition: async () => ({
       lines: [{ depth: 14, scoreCp: 20, scoreMate: null, moveUci: 'e2e4', pv: ['e2e4'] }]
     }),
-    start: async () => {},
     stop: () => {}
-  }
-}
-
-function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
-
-async function flushMicrotasks(times = 6): Promise<void> {
-  for (let i = 0; i < times; i++) {
-    await Promise.resolve()
   }
 }
 
@@ -87,7 +71,7 @@ describe('runScan', () => {
   it('scopes the cache to the tracked username before fetching any games', async () => {
     fetchRecentGamesMock.mockResolvedValue([])
 
-    await runScan('testuser', { createEngine: fakeEngine })
+    await runScan('testuser', { createPool: async () => fakePool() })
 
     expect(ensureUsernameScopeMock).toHaveBeenCalledWith('testuser')
   })
@@ -96,7 +80,7 @@ describe('runScan', () => {
     fetchRecentGamesMock.mockResolvedValue([game('g1'), game('g2')])
     isGameScannedMock.mockImplementation((url: string) => url === 'g1')
 
-    const result = await runScan('testuser', { createEngine: fakeEngine })
+    const result = await runScan('testuser', { createPool: async () => fakePool() })
 
     expect(result).toEqual({ scanned: 1 })
     expect(saveGameRecordMock).toHaveBeenCalledTimes(1)
@@ -105,21 +89,27 @@ describe('runScan', () => {
 
   it('reports progress as each game finishes', async () => {
     fetchRecentGamesMock.mockResolvedValue([game('g1'), game('g2')])
-    const progressUpdates: Array<{ scanned: number; total: number }> = []
+    const progressUpdates: ScanProgress[] = []
 
-    await runScan('testuser', { createEngine: fakeEngine, onProgress: (p) => progressUpdates.push(p) })
+    await runScan('testuser', {
+      createPool: async () => fakePool(),
+      onProgress: (p) => progressUpdates.push(p)
+    })
 
     expect(progressUpdates).toEqual([
-      { scanned: 0, total: 2 },
-      { scanned: 1, total: 2 },
-      { scanned: 2, total: 2 }
+      { scanned: 0, total: 2, etaMs: null },
+      { scanned: 1, total: 2, etaMs: expect.any(Number) },
+      { scanned: 2, total: 2, etaMs: expect.any(Number) }
     ])
   })
 
   it('stops early and returns cancelled when isCancelled is true', async () => {
     fetchRecentGamesMock.mockResolvedValue([game('g1'), game('g2')])
 
-    const result = await runScan('testuser', { createEngine: fakeEngine, isCancelled: () => true })
+    const result = await runScan('testuser', {
+      createPool: async () => fakePool(),
+      isCancelled: () => true
+    })
 
     expect(result).toEqual({ cancelled: true })
     expect(saveGameRecordMock).not.toHaveBeenCalled()
@@ -128,7 +118,7 @@ describe('runScan', () => {
   it('skips a game that fails to parse instead of aborting the whole scan', async () => {
     fetchRecentGamesMock.mockResolvedValue([game('g1', 'not a valid pgn'), game('g2')])
 
-    const result = await runScan('testuser', { createEngine: fakeEngine })
+    const result = await runScan('testuser', { createPool: async () => fakePool() })
 
     expect(result).toEqual({ scanned: 2 })
     expect(saveGameRecordMock).toHaveBeenCalledTimes(1)
@@ -138,7 +128,7 @@ describe('runScan', () => {
   it('records lastScanTime and username in scan metadata when the scan completes', async () => {
     fetchRecentGamesMock.mockResolvedValue([game('g1')])
 
-    await runScan('testuser', { createEngine: fakeEngine })
+    await runScan('testuser', { createPool: async () => fakePool() })
 
     expect(saveScanMetaMock).toHaveBeenCalledWith(
       expect.objectContaining({ username: 'testuser', lastScanTime: expect.any(Number) })
@@ -147,97 +137,58 @@ describe('runScan', () => {
 
   it('propagates an analysis engine failure so the whole scan aborts rather than silently continuing', async () => {
     fetchRecentGamesMock.mockResolvedValue([game('g1'), game('g2')])
-    const crashingEngine = (): {
-      evaluatePosition: () => Promise<PositionEvaluation>
-      start: () => Promise<void>
-      stop: () => void
-    } => ({
+    const crashingPool = (): { evaluatePosition: () => Promise<PositionEvaluation>; stop: () => void } => ({
       evaluatePosition: async () => {
         throw new Error('engine crashed')
       },
-      start: async () => {},
       stop: () => {}
     })
 
-    await expect(runScan('testuser', { createEngine: crashingEngine })).rejects.toThrow('engine crashed')
+    await expect(
+      runScan('testuser', { createPool: async () => crashingPool() })
+    ).rejects.toThrow('engine crashed')
     expect(saveGameRecordMock).not.toHaveBeenCalled()
   })
 
-  it('never sends more than one concurrent evaluatePosition call to the reused engine', async () => {
-    // '1. e4 e5' parses to 2 positions -> analyzeGame (Task 2) dispatches 3
-    // evaluatePosition calls (fenBefore + 2 fenAfter) concurrently for this
-    // one game. Since scanRunner reuses a single raw engine instance across
-    // the whole scan, those 3 calls must be serialized before reaching it --
-    // otherwise a real StockfishManager (which has no per-call request
-    // identity) would silently cross-contaminate results between them.
-    fetchRecentGamesMock.mockResolvedValue([game('g1')])
+  it('stops the pool when the scan finishes', async () => {
+    const stop = vi.fn()
+    fetchRecentGamesMock.mockResolvedValue([game('https://example.com/1')])
+    isGameScannedMock.mockReturnValue(false)
 
-    const inFlight: Array<{ resolve: (value: PositionEvaluation) => void }> = []
-    let concurrentInFlight = 0
-    let maxConcurrentInFlight = 0
+    await runScan('testuser', { createPool: async () => ({ ...fakePool(), stop }) })
 
-    const engine = {
-      evaluatePosition: async (): Promise<PositionEvaluation> => {
-        concurrentInFlight += 1
-        maxConcurrentInFlight = Math.max(maxConcurrentInFlight, concurrentInFlight)
-        const d = deferred<PositionEvaluation>()
-        inFlight.push(d)
-        const result = await d.promise
-        concurrentInFlight -= 1
-        return result
-      },
-      start: async () => {},
-      stop: () => {}
-    }
-
-    const scanPromise = runScan('testuser', { createEngine: () => engine })
-
-    await flushMicrotasks()
-
-    // If the engine were not serialized, all 3 calls dispatched by
-    // analyzeGame would already be in flight at once here.
-    expect(inFlight).toHaveLength(1)
-    expect(maxConcurrentInFlight).toBe(1)
-
-    const evaluation: PositionEvaluation = {
-      lines: [{ depth: 14, scoreCp: 20, scoreMate: null, moveUci: 'e2e4', pv: ['e2e4'] }]
-    }
-
-    inFlight[0].resolve(evaluation)
-    await flushMicrotasks()
-    expect(inFlight).toHaveLength(2)
-    expect(maxConcurrentInFlight).toBe(1)
-
-    inFlight[1].resolve(evaluation)
-    await flushMicrotasks()
-    expect(inFlight).toHaveLength(3)
-    expect(maxConcurrentInFlight).toBe(1)
-
-    inFlight[2].resolve(evaluation)
-
-    const result = await scanPromise
-    expect(result).toEqual({ scanned: 1 })
+    expect(stop).toHaveBeenCalledOnce()
   })
 
-  it('calls engine.stop() if engine.start() fails', async () => {
-    fetchRecentGamesMock.mockResolvedValue([game('g1')])
-    const stopMock = vi.fn()
-    const failingEngineFactory = () => ({
-      evaluatePosition: async () => ({
-        lines: [{ depth: 14, scoreCp: 20, scoreMate: null, moveUci: 'e2e4', pv: ['e2e4'] }]
-      }),
-      start: async () => {
-        throw new Error('Stockfish binary not found')
-      },
-      stop: stopMock
+  it('reports an eta once at least one game has completed', async () => {
+    fetchRecentGamesMock.mockResolvedValue([
+      game('https://example.com/1'),
+      game('https://example.com/2')
+    ])
+    isGameScannedMock.mockReturnValue(false)
+    const progress: ScanProgress[] = []
+
+    await runScan('testuser', {
+      createPool: async () => fakePool(),
+      onProgress: (p) => progress.push(p)
     })
 
-    const result = await runScan('testuser', { createEngine: failingEngineFactory })
+    expect(progress[0].etaMs).toBeNull()
+    const last = progress[progress.length - 1]
+    expect(last.etaMs).not.toBeNull()
+    expect(typeof last.etaMs).toBe('number')
+  })
 
-    expect(result).toEqual({
-      error: 'Could not start Stockfish: Stockfish binary not found'
+  it('returns an error when the pool cannot start', async () => {
+    fetchRecentGamesMock.mockResolvedValue([game('https://example.com/1')])
+    isGameScannedMock.mockReturnValue(false)
+
+    const result = await runScan('testuser', {
+      createPool: async () => {
+        throw new Error('no binary')
+      }
     })
-    expect(stopMock).toHaveBeenCalledOnce()
-    expect(saveGameRecordMock).not.toHaveBeenCalled()
+
+    expect(result).toEqual({ error: 'Could not start Stockfish: no binary' })
   })
 })

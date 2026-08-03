@@ -37,7 +37,12 @@ export function useInsightsScan(): {
   }, [])
 
   const startScan = useCallback(async () => {
-    setState((prev) => ({ ...prev, status: 'scanning', error: null, progress: { scanned: 0, total: 0 } }))
+    setState((prev) => ({
+      ...prev,
+      status: 'scanning',
+      error: null,
+      progress: { scanned: 0, total: 0, etaMs: null }
+    }))
 
     let result: ScanOutcome
     try {

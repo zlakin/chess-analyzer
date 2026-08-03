@@ -164,7 +164,13 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     try {
       return await runScan(username, {
         isCancelled: () => scanRuns.isCancelled(runId),
-        createEngine: () => new StockfishManager(getStockfishBinaryPath()),
+        createPool: () => {
+          const size = poolSize(cpus().length)
+          return createEnginePool(
+            size,
+            () => new StockfishManager(getStockfishBinaryPath(), undefined, { threads: 1, hash: poolHashMb(size) })
+          )
+        },
         onProgress: (progress) => {
           getWindow()?.webContents.send(IPC_CHANNELS.scanProgress, progress)
         }

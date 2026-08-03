@@ -1,7 +1,8 @@
 import type { ScanOutcome, ScanProgress } from '../../shared/types'
 import { fetchRecentGames } from '../chesscom/chessComClient'
 import { parsePgn } from '../../shared/pgn'
-import { analyzeGame, type EvaluationEngine } from '../analysis/gameAnalyzer'
+import { analyzeGame } from '../analysis/gameAnalyzer'
+import type { EnginePool } from '../engine/enginePool'
 import { extractInsightRecord } from './extractInsightRecord'
 import {
   ensureSchemaVersion,
@@ -17,33 +18,7 @@ const SCAN_ANALYSIS_DEPTH = 14
 export interface ScanRunnerOptions {
   isCancelled?: () => boolean
   onProgress?: (progress: ScanProgress) => void
-  createEngine: () => EvaluationEngine & { start: () => Promise<void>; stop: () => void }
-}
-
-// analyzeGame (Task 2) now dispatches every position in a game concurrently,
-// but scanRunner reuses a single raw engine instance (in production, a bare
-// StockfishManager with no per-call request identity - see
-// explorationEngine.ts's comment on the same hazard) across the entire
-// scan's worth of games. Wrapping it here serializes every call issued
-// through analyzeGame so at most one evaluatePosition is ever in flight
-// against the underlying engine at a time, keeping this exactly as safe as
-// the old sequential analyzeGame loop was. Mirrors the promise-chain idiom
-// explorationEngine.ts already uses for its own shared-engine queue.
-function serialized(engine: EvaluationEngine): EvaluationEngine {
-  let queue: Promise<unknown> = Promise.resolve()
-  return {
-    evaluatePosition(fen, options) {
-      const result = queue.then(() => engine.evaluatePosition(fen, options))
-      // Keep the queue chain itself always-resolved regardless of this
-      // call's outcome, so a failed call doesn't permanently break every
-      // later call chained after it.
-      queue = result.then(
-        () => undefined,
-        () => undefined
-      )
-      return result
-    }
-  }
+  createPool: () => Promise<EnginePool>
 }
 
 export async function runScan(username: string, options: ScanRunnerOptions): Promise<ScanOutcome> {
@@ -53,25 +28,21 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
   const games = await fetchRecentGames(username, SCAN_GAME_LIMIT)
   const newGames = games.filter((game) => !isGameScanned(game.url))
 
-  options.onProgress?.({ scanned: 0, total: newGames.length })
+  options.onProgress?.({ scanned: 0, total: newGames.length, etaMs: null })
 
   if (newGames.length === 0) {
     saveScanMeta({ username, lastScanTime: Date.now() })
     return { scanned: 0 }
   }
 
-  const engine = options.createEngine()
+  let pool: EnginePool
   try {
-    await engine.start()
+    pool = await options.createPool()
   } catch (err) {
-    engine.stop()
     return { error: `Could not start Stockfish: ${(err as Error).message}` }
   }
 
-  // Only the value passed to analyzeGame is serialized - .start()/.stop()
-  // still go directly to the raw engine.
-  const analysisEngine = serialized(engine)
-
+  const startedAt = Date.now()
   let scanned = 0
   try {
     for (const game of newGames) {
@@ -90,11 +61,16 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
       } catch (err) {
         console.error(`Skipping game ${game.url}: could not parse PGN`, err)
         scanned += 1
-        options.onProgress?.({ scanned, total: newGames.length })
+        const elapsed = Date.now() - startedAt
+        options.onProgress?.({
+          scanned,
+          total: newGames.length,
+          etaMs: Math.round((elapsed / scanned) * (newGames.length - scanned))
+        })
         continue
       }
 
-      const result = await analyzeGame(positions, analysisEngine, {
+      const result = await analyzeGame(positions, pool, {
         depth: SCAN_ANALYSIS_DEPTH,
         isCancelled: options.isCancelled
       })
@@ -102,10 +78,15 @@ export async function runScan(username: string, options: ScanRunnerOptions): Pro
 
       saveGameRecord(extractInsightRecord(game, result, username))
       scanned += 1
-      options.onProgress?.({ scanned, total: newGames.length })
+      const elapsed = Date.now() - startedAt
+      options.onProgress?.({
+        scanned,
+        total: newGames.length,
+        etaMs: Math.round((elapsed / scanned) * (newGames.length - scanned))
+      })
     }
   } finally {
-    engine.stop()
+    pool.stop()
   }
 
   saveScanMeta({ username, lastScanTime: Date.now() })
