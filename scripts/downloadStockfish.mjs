@@ -165,16 +165,25 @@ async function main() {
       // top build. Comparing against candidates[0] alone would mean the installed
       // binary never matches its own stamp on such a machine, so every run would
       // re-download. Anything still on this list is a build we would be happy to
-      // install today, so keeping it is correct.
+      // install today, so keeping it is correct. The cost of that choice is that
+      // this branch never upgrades: a stamped generic build stays put even after
+      // a CPU upgrade would allow a faster one, so deleting version.json is the
+      // escape hatch that forces a fresh best-first install.
       if (
         stamp.releaseTag === STOCKFISH_RELEASE_TAG &&
         candidates.some((c) => c.asset === stamp.asset) &&
-        stamp.sha256 === sha256(finalBinaryPath)
+        stamp.sha256 === sha256(finalBinaryPath) &&
+        // A matching hash proves the file is unmodified, not that this CPU can
+        // execute it -- a vendor dir copied from other hardware passes every
+        // check above and then dies with an illegal instruction mid-analysis.
+        runSmokeTest(finalBinaryPath)
       ) {
         console.log(`Stockfish ${stamp.asset} already installed at ${finalBinaryPath}`)
         return
       }
-      console.log('Stockfish stamp does not match; reinstalling.')
+      console.log(
+        'Stockfish stamp does not match, or the stamped binary no longer runs here; reinstalling.'
+      )
     } catch {
       console.log('Stockfish stamp unreadable; reinstalling.')
     }
