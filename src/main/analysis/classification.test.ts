@@ -3,6 +3,7 @@ import { classifyMove } from './classification'
 import type { ClassifyMoveInput } from './classification'
 import { isBookMove } from '../../shared/analysis/openingBook'
 import { cpToWinPercent } from '../../shared/engineMath'
+import { staticExchangeEval } from '../../shared/analysis/see'
 
 function input(overrides: Partial<ClassifyMoveInput>): ClassifyMoveInput {
   return {
@@ -136,11 +137,19 @@ describe('classifyMove', () => {
     ).toBe('great')
   })
 
+  // The exact tier maxima (2, 5, 10, 20) are here on purpose: they pin the
+  // comparison operator, which the mid-tier values alone leave entirely
+  // unconstrained. Spec 1.2's table is strictly-less-than, so a loss of
+  // exactly 2 belongs to the tier below "excellent".
   it.each([
     [1, 'excellent'],
+    [2, 'good'],
     [3.5, 'good'],
+    [5, 'inaccuracy'],
     [8, 'inaccuracy'],
+    [10, 'mistake'],
     [15, 'mistake'],
+    [20, 'blunder'],
     [40, 'blunder']
   ])('classifies a non-best move losing %s win percent as %s', (winPercentLoss, expected) => {
     expect(classifyMove(input({ isBestMove: false, winPercentLoss }))).toBe(expected)
@@ -170,31 +179,54 @@ describe('classifyMove', () => {
   })
 
   it('does not classify 3...a6 in the Ruy Lopez as brilliant (regression)', () => {
-    // Reproduces the false-positive from the final review: in a standard
-    // Ruy Lopez (1.e4 e5 2.Nf3 Nc6 3.Bb5 a6), a6's destination square is
-    // "attacked" by the bishop on b5, so src/shared/pgn.ts's seeCp
-    // computation flags it as a losing exchange, i.e. a potential sacrifice
-    // by the SACRIFICE_SEE_THRESHOLD applied in classification.ts (verified
-    // directly by src/shared/pgn.test.ts and by driving the real
-    // analyzeGame pipeline with the real Stockfish binary). If it's also
-    // the engine's top choice in a non-critical position and the opening
-    // book doesn't cover it, classifyMove falls through to the brilliant
-    // path. The book must cover this exact, extremely standard line so
-    // isBookMove is true and classifyMove short-circuits to "book" before
-    // ever reaching the sacrifice/brilliant branch.
+    // Reproduces the false-positive from the final review: the old
+    // sacrifice heuristic was `capturedValue < movedValue && isAttacked(to)`,
+    // which for a pawn push reduces to "is the destination covered" -- and
+    // a6's destination is covered by the bishop on b5. A best-move pawn
+    // push outside the opening book therefore classified "brilliant".
+    //
+    // SEE is the fix and it is the first line of defence, so drive the real
+    // one rather than a hand-picked seeCp: once the pawn stands on a6 the
+    // a8 rook defends it, the swap-off loses nothing, and the value is 0 --
+    // nowhere near SACRIFICE_SEE_THRESHOLD (-150). src/shared/pgn.test.ts
+    // pins the same 0 from the parsing side. So the move is not brilliant
+    // even with the book switched off, which is what the first assertion
+    // below checks; the book covering this standard line is a second,
+    // independent short-circuit, checked after it.
+    const beforeA6 = 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3'
+    const seeCp = staticExchangeEval(beforeA6, 'a7', 'a6')
+    expect(seeCp).toBe(0)
+
+    // secondBestMoverCp is -200, not the input() default of null: a null
+    // second-best would fail the brilliant gate on its own and mask seeCp as
+    // the reason. With necessity satisfied, seeCp is the only thing standing
+    // between this move and 'brilliant'.
+    expect(
+      classifyMove(
+        input({
+          isBestMove: true,
+          isBookMove: false,
+          seeCp,
+          evalBeforeMoverCp: 30,
+          evalAfterMoverCp: 20,
+          secondBestMoverCp: -200
+        })
+      )
+    ).not.toBe('brilliant')
+
     const sanHistory = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6']
     const a6Ply = 6
     expect(isBookMove(sanHistory, a6Ply)).toBe(true)
-
-    const classification = classifyMove(
-      input({
-        isBestMove: true,
-        isBookMove: isBookMove(sanHistory, a6Ply),
-        seeCp: -300,
-        evalBeforeMoverCp: 30
-      })
-    )
-    expect(classification).toBe('book')
-    expect(classification).not.toBe('brilliant')
+    expect(
+      classifyMove(
+        input({
+          isBestMove: true,
+          isBookMove: isBookMove(sanHistory, a6Ply),
+          seeCp,
+          evalBeforeMoverCp: 30,
+          secondBestMoverCp: -200
+        })
+      )
+    ).toBe('book')
   })
 })

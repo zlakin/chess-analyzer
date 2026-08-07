@@ -65,6 +65,11 @@ export function classifyMove(input: ClassifyMoveInput): MoveClassification {
     return 'best'
   }
 
-  const tier = WIN_PERCENT_LOSS_TIERS.find((t) => input.winPercentLoss <= t.max)
+  // Strictly less than, matching spec 1.2's table ("< 2 excellent", "< 5
+  // good", ...): a loss of exactly 2 is a "good" move, not an "excellent"
+  // one. winPercentLoss is a difference of two logistic outputs and will
+  // not realistically land on an exact integer, so this is about agreeing
+  // with the spec rather than about observable behaviour.
+  const tier = WIN_PERCENT_LOSS_TIERS.find((t) => input.winPercentLoss < t.max)
   return tier ? tier.label : 'blunder'
 }
