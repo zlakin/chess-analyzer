@@ -171,6 +171,66 @@ describe('createEnginePool', () => {
     expect(new Set(callDeferreds.map((c) => c.engineId)).size).toBe(2)
   })
 
+  // A call can sit in `waiters` for minutes behind a concurrent run's work.
+  // The pool is shared between the analyze and scan handlers, so a cancelled
+  // run can no longer stop the engines to kill that queue - the queued call
+  // has to notice the cancellation itself when its turn finally comes.
+  it('never starts a queued evaluation whose caller cancelled while it waited', async () => {
+    const searched: string[] = []
+    const busyEngine = deferred<PositionEvaluation>()
+    let cancelled = false
+
+    const pool = await createEnginePool(1, () => ({
+      start: async () => {},
+      evaluatePosition: async (fen: string) => {
+        searched.push(fen)
+        return fen === 'busy' ? busyEngine.promise : evalFor(1)
+      },
+      stop: () => {}
+    }))
+
+    const busy = pool.evaluatePosition('busy', { depth: 1 })
+    const queued = pool.evaluatePosition('queued', { depth: 1, isCancelled: () => cancelled })
+
+    await flushAsync()
+    expect(searched).toEqual(['busy'])
+
+    cancelled = true
+    busyEngine.resolve(evalFor(1))
+
+    await expect(queued).rejects.toThrow(/cancelled/i)
+    await busy
+    expect(searched).toEqual(['busy'])
+  })
+
+  it('still hands the freed engine to the next waiter after skipping a cancelled one', async () => {
+    const searched: string[] = []
+    const busyEngine = deferred<PositionEvaluation>()
+
+    const pool = await createEnginePool(1, () => ({
+      start: async () => {},
+      evaluatePosition: async (fen: string) => {
+        searched.push(fen)
+        return fen === 'busy' ? busyEngine.promise : evalFor(1)
+      },
+      stop: () => {}
+    }))
+
+    const busy = pool.evaluatePosition('busy', { depth: 1 })
+    const cancelledCall = pool.evaluatePosition('cancelled', { depth: 1, isCancelled: () => true })
+    const sibling = pool.evaluatePosition('sibling', { depth: 1 })
+
+    await flushAsync()
+    busyEngine.resolve(evalFor(1))
+
+    await expect(cancelledCall).rejects.toThrow(/cancelled/i)
+    await expect(sibling).resolves.toBeDefined()
+    await busy
+    // The skipped call must not swallow the engine: the sibling behind it in
+    // the queue still gets served.
+    expect(searched).toEqual(['busy', 'sibling'])
+  })
+
   it('stops already-started engines when one engine fails to start', async () => {
     const engines: PooledEngine[] = [
       fakeEngine(),

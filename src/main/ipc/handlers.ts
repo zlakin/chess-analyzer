@@ -96,6 +96,15 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
           // Release, not stop: a scan running alongside this analysis may still
           // be holding the same engines. The pool stops when the last holder
           // lets go.
+          //
+          // That means release() is NOT how a cancelled run stops searching --
+          // with a sibling holder it deliberately touches no engine at all. The
+          // stopping happens inside analyzeGame, which bounds how many
+          // positions it keeps outstanding (to the pool's size) and stops
+          // dispatching the rest the moment isCancelled() goes true; the pool
+          // then skips any of those already queued rather than starting them.
+          // Without both halves, Cancel would return here instantly while the
+          // whole game kept searching on engines the scan needs.
           lease.release()
         }
       } finally {

@@ -85,6 +85,10 @@ export function createSharedEnginePool(createPool: () => Promise<EnginePool>): S
 // tearing it out from under an analysis run that is still using it.
 export function leaseAsPool(lease: EnginePoolLease): EnginePool {
   return {
+    // Passed through, not invented: analyzeGame sizes its dispatch window from
+    // this, and a wrong number here would either idle engines or queue work a
+    // cancelled scan can no longer take back.
+    size: lease.pool.size,
     evaluatePosition: (fen, options) => lease.pool.evaluatePosition(fen, options),
     stop: () => lease.release()
   }

@@ -45,11 +45,16 @@ function game(url: string, pgn = '1. e4 e5'): ChessComGameSummary {
   }
 }
 
+// `size` is what analyzeGame uses to bound how many positions it keeps
+// outstanding at once; 3 is the whole of a '1. e4 e5' game, so these fakes
+// behave exactly as they did before the window existed.
 function fakePool(): {
+  size: number
   evaluatePosition: () => Promise<PositionEvaluation>
   stop: () => void
 } {
   return {
+    size: 3,
     evaluatePosition: async () => ({
       lines: [{ depth: 14, scoreCp: 20, scoreMate: null, moveUci: 'e2e4', pv: ['e2e4'] }]
     }),
@@ -137,7 +142,12 @@ describe('runScan', () => {
 
   it('propagates an analysis engine failure so the whole scan aborts rather than silently continuing', async () => {
     fetchRecentGamesMock.mockResolvedValue([game('g1'), game('g2')])
-    const crashingPool = (): { evaluatePosition: () => Promise<PositionEvaluation>; stop: () => void } => ({
+    const crashingPool = (): {
+      size: number
+      evaluatePosition: () => Promise<PositionEvaluation>
+      stop: () => void
+    } => ({
+      size: 3,
       evaluatePosition: async () => {
         throw new Error('engine crashed')
       },
@@ -184,13 +194,19 @@ describe('runScan', () => {
       const progress: ScanProgress[] = []
 
       // '1. e4 e5' parses to 2 positions, so analyzeGame (Task 2) dispatches
-      // exactly 3 concurrent evaluatePosition calls per game (fenBefore + 2
-      // fenAfter), all fired synchronously before any of them resolve.
+      // exactly 3 evaluatePosition calls per game (fenBefore + 2 fenAfter) --
+      // all of them concurrently, since the fake pool's `size` of 3 is wide
+      // enough for the whole game to be outstanding at once.
       // Advancing the fake clock by 1000ms on every 3rd call therefore
       // advances it by exactly 1000ms per completed game, regardless of
       // which of the 3 concurrent calls happens to be counted as the third.
       let calls = 0
-      const timedPool = (): { evaluatePosition: () => Promise<PositionEvaluation>; stop: () => void } => ({
+      const timedPool = (): {
+        size: number
+        evaluatePosition: () => Promise<PositionEvaluation>
+        stop: () => void
+      } => ({
+        size: 3,
         evaluatePosition: async () => {
           calls += 1
           if (calls % 3 === 0) vi.advanceTimersByTime(1000)

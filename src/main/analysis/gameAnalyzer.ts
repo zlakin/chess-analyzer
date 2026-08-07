@@ -5,9 +5,15 @@ import { isBookMove } from '../../shared/analysis/openingBook'
 import { moveAccuracy, gameAccuracy } from './accuracy'
 
 export interface EvaluationEngine {
+  // Present when the evaluator is an engine pool: the number of engines behind
+  // it, and therefore how many evaluations can actually be running at once.
+  // analyzeGame never keeps more than this many outstanding (see the dispatch
+  // window below). An evaluator without it -- a single engine, or a test fake
+  // -- is treated as unbounded, which is the pre-pool behaviour.
+  size?: number
   evaluatePosition(
     fen: string,
-    options: { depth: number; multiPv?: number }
+    options: { depth: number; multiPv?: number; isCancelled?: () => boolean }
   ): Promise<PositionEvaluation>
 }
 
@@ -45,7 +51,10 @@ export async function analyzeGame(
     // full completion happens first - later-settling evaluations for
     // positions beyond that point still resolve/reject normally (every
     // dispatched call keeps both handlers attached, so none is ever left
-    // unhandled), they just have nothing left to do once this fires.
+    // unhandled), they just have nothing left to do once this fires. Note
+    // "dispatched": once this has fired, dispatch() is never called again, so
+    // the positions past the settling point are not merely ignored, they are
+    // never handed to the engine at all.
     function finishOnce(action: () => void): void {
       if (settled) return
       settled = true
@@ -137,28 +146,76 @@ export async function analyzeGame(
       }
     }
 
-    fens.forEach((fen, i) => {
-      engine.evaluatePosition(fen, { depth: options.depth }).then(
-        (evaluation) => {
-          results[i] = evaluation
-          // tryFlush() runs synchronously inside this fulfillment handler,
-          // whose own returned promise is discarded by .then() below - if
-          // it threw (e.g. options.onMove synchronously throwing because
-          // the renderer window was destroyed mid-analysis), that would
-          // otherwise become an unhandled rejection and leave `settled`
-          // false forever, hanging analyzeGame's outer promise. Route any
-          // such throw through the same finishOnce/reject path as a
-          // genuine evaluatePosition rejection.
-          try {
-            tryFlush()
-          } catch (err) {
+    // Positions go to the engine through a window of at most this many
+    // outstanding calls instead of all at once. Handing over every fen up
+    // front looks free -- the pool queues them and runs `size` at a time
+    // either way -- but it gives away the whole game before the user can
+    // cancel: the pool is now shared with the Insights scan, so a cancelled
+    // analysis releases its lease instead of stopping the engines (see the
+    // comment in handlers.ts), and every queued search would still run to
+    // completion on engines the scan needs. Sizing the window to the pool
+    // keeps every engine fed -- one outstanding call each -- while leaving
+    // nothing beyond that queued to outlive a cancellation.
+    const maxOutstanding = Math.max(1, engine.size ?? fens.length)
+    let nextToDispatch = 0
+    let outstanding = 0
+
+    // The only place work is issued, so cancellation only has to be honoured
+    // here. It also settles the run when a cancelled analysis has no reason to
+    // keep going: tryFlush() can only notice the cancellation when the next
+    // in-order result arrives, and once dispatch has stopped that result may
+    // never come, which would leave this promise pending forever.
+    function pump(): void {
+      if (settled) return
+      if (options.isCancelled?.()) {
+        finishOnce(() => resolve({ cancelled: true }))
+        return
+      }
+      while (nextToDispatch < fens.length && outstanding < maxOutstanding) {
+        dispatch(nextToDispatch++)
+      }
+    }
+
+    function dispatch(i: number): void {
+      outstanding += 1
+      engine
+        .evaluatePosition(fens[i], { depth: options.depth, isCancelled: options.isCancelled })
+        .then(
+          (evaluation) => {
+            outstanding -= 1
+            results[i] = evaluation
+            // tryFlush() runs synchronously inside this fulfillment handler,
+            // whose own returned promise is discarded by .then() below - if
+            // it threw (e.g. options.onMove synchronously throwing because
+            // the renderer window was destroyed mid-analysis), that would
+            // otherwise become an unhandled rejection and leave `settled`
+            // false forever, hanging analyzeGame's outer promise. Route any
+            // such throw through the same finishOnce/reject path as a
+            // genuine evaluatePosition rejection.
+            try {
+              tryFlush()
+            } catch (err) {
+              finishOnce(() => reject(err instanceof Error ? err : new Error(String(err))))
+              return
+            }
+            pump()
+          },
+          (err: unknown) => {
+            outstanding -= 1
+            // While cancelled, a rejection is expected rather than a failure:
+            // it is the pool declining to start a search this run no longer
+            // wants, or an engine stopped out from under it. Surfacing it as
+            // an error would turn the user's own Cancel into an "Analysis
+            // failed" message.
+            if (options.isCancelled?.()) {
+              finishOnce(() => resolve({ cancelled: true }))
+              return
+            }
             finishOnce(() => reject(err instanceof Error ? err : new Error(String(err))))
           }
-        },
-        (err: unknown) => {
-          finishOnce(() => reject(err instanceof Error ? err : new Error(String(err))))
-        }
-      )
-    })
+        )
+    }
+
+    pump()
   })
 }

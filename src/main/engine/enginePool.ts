@@ -7,7 +7,15 @@ export interface PooledEngine {
 }
 
 export interface EnginePool {
-  evaluatePosition(fen: string, options: { depth: number; multiPv?: number }): Promise<PositionEvaluation>
+  // How many engines are behind this pool. gameAnalyzer reads it to size its
+  // dispatch window: a caller that queues more than `size` positions at once
+  // has handed the pool work it can no longer take back, which is what made
+  // cancelling an analysis stop the waiting rather than the searching.
+  size: number
+  evaluatePosition(
+    fen: string,
+    options: { depth: number; multiPv?: number; isCancelled?: () => boolean }
+  ): Promise<PositionEvaluation>
   stop(): void
 }
 
@@ -77,9 +85,24 @@ export async function createEnginePool(
   }
 
   return {
+    size: engines.length,
     async evaluatePosition(fen, options) {
       const engine = await acquire()
       try {
+        // This call may have waited here for minutes behind another run's
+        // work, and its caller may have cancelled in the meantime. Since the
+        // pool is shared, a cancelled run can no longer stop the engines to
+        // drop its own queue, so the queued call has to check for itself:
+        // starting the search now would burn an engine on a result nobody
+        // will read, on hardware a concurrent run is waiting for. The finally
+        // below still hands the engine straight to the next waiter, so
+        // skipping is cheap and never swallows an engine. Rejecting rather
+        // than returning a placeholder keeps the "every resolved evaluation
+        // is a real search" invariant every caller relies on; gameAnalyzer
+        // turns a rejection-while-cancelled into { cancelled: true }.
+        if (options.isCancelled?.()) {
+          throw new Error('EnginePool: evaluation cancelled before it started')
+        }
         return await engine.evaluatePosition(fen, options)
       } finally {
         release(engine)

@@ -9,6 +9,7 @@ function evaluation(): PositionEvaluation {
 
 function fakePool(): EnginePool {
   return {
+    size: 2,
     evaluatePosition: vi.fn(async () => evaluation()),
     stop: vi.fn()
   }
