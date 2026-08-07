@@ -33,7 +33,11 @@ export function parsePgn(pgn: string): AnalyzedPosition[] {
       moveUci: `${move.from}${move.to}${move.promotion ?? ''}`,
       fenBefore: move.before,
       fenAfter: move.after,
-      seeCp: staticExchangeEval(move.before, move.from, move.to),
+      // move.promotion matters: without it every promotion is priced as a
+      // queen, and an underpromotion -- the one case where the mover chose
+      // to take less material -- would score as a gain instead of a
+      // sacrifice.
+      seeCp: staticExchangeEval(move.before, move.from, move.to, move.promotion),
       isCapture: move.captured !== undefined,
       legalMoveCount: beforePosition.moves().length
     }

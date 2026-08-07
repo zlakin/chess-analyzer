@@ -59,6 +59,32 @@ describe('staticExchangeEval', () => {
     expect(staticExchangeEval('r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1', 'b7', 'a8')).toBe(1300)
   })
 
+  it('values an underpromotion as the piece actually chosen, not as a queen', () => {
+    // gxh8=N takes an undefended rook and promotes to a knight:
+    // 500 + (320 - 100) = 720. Assuming a queen would report 1300 and turn
+    // a deliberate 580cp concession into an apparent gain -- an
+    // underpromotion is exactly where the mover takes less material on
+    // purpose, so the error always hides a sacrifice.
+    const beforeGxh8 = '1nb1q1nr/rppppkPp/p7/6p1/4P3/1P6/P1PP1P1P/RNBQKBNR w KQ - 1 8'
+    expect(staticExchangeEval(beforeGxh8, 'g7', 'h8', 'n')).toBe(720)
+  })
+
+  it('scores a promoting recapture inside the swap-off as the promoted piece', () => {
+    // Rhxg1 takes the queen, and h2xg1=Q takes back as a queen. Pricing the
+    // recapture as a plain pawn inverts the sign of the whole exchange:
+    // it used to report +400 where the real value is -400.
+    const beforeRxg1 = '1rb2r2/3p1k2/1P5p/1Bp5/2P3pb/4P3/2R4p/3K2qR w - - 2 32'
+    expect(staticExchangeEval(beforeRxg1, 'h1', 'g1')).toBe(-400)
+  })
+
+  it('counts the promoted piece the recapturer leaves behind on the square', () => {
+    // Rf8-d8 is a quiet move onto a square the e7 pawn covers: exd8=Q wins
+    // the rook (500) and the promotion (800). Scoring the recapture as a
+    // pawn reported -500 instead of -1300.
+    const beforeRd8 = '1n3r2/p3P1k1/1p1p3n/3q1p1P/P4P1P/1P5N/7R/1N2K3 b - - 0 30'
+    expect(staticExchangeEval(beforeRd8, 'f8', 'd8')).toBe(-1300)
+  })
+
   it('handles an en passant capture', () => {
     // The captured pawn stands on d5, not on the destination d6.
     expect(staticExchangeEval('4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1', 'e5', 'd6')).toBe(100)
