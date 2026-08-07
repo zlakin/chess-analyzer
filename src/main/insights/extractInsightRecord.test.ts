@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { extractInsightRecord } from './extractInsightRecord'
+import { CURRENT_SCHEMA_VERSION } from './insightsStore'
 import type { AnalyzedMove, ChessComGameSummary, GameAnalysisResult } from '../../shared/types'
 
 const HUNG_ROOK_FEN = '3qk3/8/8/8/8/8/8/3R3K b - - 0 1'
@@ -36,6 +37,23 @@ function chessComGame(overrides: Partial<ChessComGameSummary> = {}): ChessComGam
 }
 
 describe('extractInsightRecord', () => {
+  it('stamps every record it produces with the current schema version', () => {
+    // Every read-side test synthesizes its records through a local helper
+    // that hardcodes this field, so nothing observed the producer stamping
+    // it. The constant is imported rather than written out as a literal so
+    // that a future version bump has to be a deliberate change here too,
+    // instead of silently making this test assert the wrong version.
+    const analysis: GameAnalysisResult = {
+      moves: [move({ ply: 1, color: 'w', san: 'e4', classification: 'book', fenAfter: QUIET_FEN })],
+      whiteAccuracy: 95,
+      blackAccuracy: 80
+    }
+
+    expect(extractInsightRecord(chessComGame(), analysis, 'TestUser').schemaVersion).toBe(
+      CURRENT_SCHEMA_VERSION
+    )
+  })
+
   it('identifies the user color by matching username against white/black (case-insensitively)', () => {
     const analysis: GameAnalysisResult = {
       moves: [move({ ply: 1, color: 'w', san: 'e4', classification: 'book', fenAfter: QUIET_FEN })],

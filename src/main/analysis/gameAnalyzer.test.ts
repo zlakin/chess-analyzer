@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { analyzeGame } from './gameAnalyzer'
+import { parsePgn } from '../../shared/pgn'
 import type { AnalyzedPosition, PositionEvaluation } from '../../shared/types'
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
@@ -142,6 +143,42 @@ describe('analyzeGame', () => {
     if ('cancelled' in result) throw new Error('unexpected cancellation')
     expect(result.whiteAccuracy).toBe(100)
     expect(result.blackAccuracy).toBe(100)
+  })
+
+  it('derives isRecapture from the move pair so a recapture is not called great', async () => {
+    // classification.test.ts pins what classifyMove does once isRecapture is
+    // true; nothing pinned the derivation here, and passing a hardcoded
+    // `isRecapture: false` left the whole suite green -- which is the "every
+    // recapture is Great" bug this wiring exists to prevent.
+    //
+    // 1.e4 e5 2.Nf3 f6 3.Nxe5 fxe5: fxe5 takes back the knight that just
+    // took on e5, and 2...f6 leaves the opening book, so isBookMove cannot
+    // short-circuit the classification and mask the result.
+    const recapturePositions = parsePgn('1. e4 e5 2. Nf3 f6 3. Nxe5 fxe5')
+    const recapture = recapturePositions[5]
+    expect(recapture.san).toBe('fxe5')
+    expect(recapture.isCapture).toBe(true)
+
+    // These evals make fxe5 the engine's top move in a balanced position
+    // with a 250cp gap to second best -- comfortably past GREAT_MOVE_GAP_CP,
+    // so the recapture flag is the only thing keeping it out of 'great'.
+    const engine = {
+      evaluatePosition: async (fen: string): Promise<PositionEvaluation> => {
+        if (fen !== recapture.fenBefore) return evalFor(10, 'a2a3')
+        return {
+          lines: [
+            { depth: 18, scoreCp: 50, scoreMate: null, moveUci: 'f6e5', pv: ['f6e5'] },
+            { depth: 18, scoreCp: -200, scoreMate: null, moveUci: 'g8e7', pv: ['g8e7'] }
+          ]
+        }
+      }
+    }
+
+    const result = await analyzeGame(recapturePositions, engine, { depth: 18 })
+    if ('cancelled' in result) throw new Error('unexpected cancellation')
+    const classified = result.moves[5]
+    expect(classified.san).toBe('fxe5')
+    expect(classified.classification).toBe('best')
   })
 
   it('does not throw when a terminal position (checkmate/stalemate) yields an empty lines array', async () => {

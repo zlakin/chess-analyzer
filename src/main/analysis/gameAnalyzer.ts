@@ -80,8 +80,13 @@ export async function analyzeGame(
         // first move of the game, not a missing element, and must not be
         // treated as a recapture. Comparing UCI destination squares (chars
         // 2-4) is what "recapture" means here: this move is a capture that
-        // landed on the exact square the opponent's last move landed on,
-        // i.e. it took back the piece that just took something.
+        // landed on the exact square the opponent's last move landed on.
+        // Note it deliberately does NOT require the opponent's move to have
+        // been a capture itself -- 3...Nd4 4.Nxd4 counts, even though
+        // nothing was taken back -- which is spec 1.4's definition. Both
+        // cases share the property the "great" gate cares about: taking the
+        // piece the opponent just put there clears the gap to second best
+        // without being a feat of calculation.
         const previousPosition = positions[nextToFlush - 2]
         const isRecapture =
           position.isCapture &&
