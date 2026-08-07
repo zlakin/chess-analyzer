@@ -14,8 +14,20 @@ async function getEngine(spawnFn: SpawnFn): Promise<StockfishManager> {
     starting = (async () => {
       // The exploration engine serves one position at a time for the
       // interactive board and for puzzle grading, so unlike the pool it
-      // should use real thread parallelism. Half the machine leaves room for
-      // the UI and for an analysis pool running alongside it.
+      // should use real thread parallelism: half the machine for the
+      // interactive engine.
+      //
+      // That half is explicitly NOT disjoint from the analysis pool's share.
+      // It was, back when MAX_POOL_SIZE was 6; at 12 the arithmetic no longer
+      // balances at exactly the mainstream core counts -- 8 cores gives 6 pool
+      // threads plus 4 here, 12 gives 10 plus 6, 16 gives 12 plus 8, and it
+      // only comes back into budget at 32 cores or more. The overlap is
+      // accepted rather than budgeted away, because the two are rarely hot at
+      // the same time: the pool's engines are busy only during an analysis run
+      // or an Insights scan, and this engine only while the user is sitting on
+      // a position waiting for an evaluation. It is a persistent singleton
+      // torn down only at app quit, so it does hold its threads open the whole
+      // session -- factor that in before raising either number.
       const instance = new StockfishManager(getStockfishBinaryPath(), spawnFn, {
         threads: Math.max(1, Math.floor(cpus().length / 2)),
         hash: 256

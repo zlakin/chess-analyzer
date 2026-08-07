@@ -57,8 +57,12 @@ whatever build happens to match the build machine's CPU could crash on
 an end user's older hardware. `npm run build:linux` therefore runs
 `npm run setup:stockfish:dist` first, which downloads the generic build
 into a separate `vendor/stockfish-dist/` that packaging reads via
-`extraResources`. Invoking `electron-builder` directly, without going
-through `build:linux`, will fail on a missing `vendor/stockfish-dist`.
+`extraResources`. `build:linux` is the only supported way to package:
+`extraResources` warns and carries on when a source path is missing, so
+invoking `electron-builder` directly with no `vendor/stockfish-dist`
+present exits 0 and produces an installer with no engine in it — the app
+then fails with "Stockfish is not installed at …" the first time a user
+asks for an analysis. Nothing checks for you.
 
 `npm test` runs the Vitest suite; `npm run typecheck` runs `tsc -b` across
 the project references.
