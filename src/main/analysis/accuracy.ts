@@ -78,9 +78,19 @@ export function gameAccuracy(input: AccuracyInput): { white: number; black: numb
         ? entries.reduce((sum, e) => sum + e.accuracy * e.weight, 0) / totalWeight
         : entries.reduce((sum, e) => sum + e.accuracy, 0) / entries.length
 
-    // Guard the reciprocal: a 0-accuracy move would otherwise divide by zero.
+    // The floor is not a division-by-zero guard (1/0 is Infinity in JS, not a
+    // throw): it decides how hard a single zero-accuracy move can pull the
+    // whole game down, and it is the dominant term when one exists.
+    // moveAccuracy clamps to exactly 0 once the win-percent drop reaches ~80,
+    // which "had mate, gets mated" reaches easily, and a floor of 0.01 makes
+    // that one move contribute a reciprocal of 100 -- against ~0.19 for the
+    // other nineteen moves of a 20-move side. The harmonic term then pins to
+    // roughly n/100 no matter what else the player did, collapsing the
+    // published blend to half the weighted mean. A floor of 1 is Lichess
+    // parity: lila's Maths.harmonicMean is
+    // multiplier * a.size / fold(acc + multiplier / max(v, 1)).
     const harmonicMean =
-      entries.length / entries.reduce((sum, e) => sum + 1 / Math.max(e.accuracy, 0.01), 0)
+      entries.length / entries.reduce((sum, e) => sum + 1 / Math.max(e.accuracy, 1), 0)
 
     return clamp((weightedMean + harmonicMean) / 2, 0, 100)
   }

@@ -29,6 +29,13 @@ describe('moveAccuracy', () => {
     expect(accuracy).toBeLessThan(40)
   })
 
+  it('is exactly 0 for a total collapse, which is why gameAccuracy needs a floor', () => {
+    // The clamp reaches exactly 0 once the win-percent drop passes ~80, and
+    // cpToWinPercent saturates, so "had mate, gets mated" lands here. That is
+    // the input the harmonic mean's reciprocal has to survive.
+    expect(moveAccuracy(delta({ evalBeforeMoverCp: 100000, evalAfterMoverCp: -100000 }))).toBe(0)
+  })
+
   it('never goes below 0 or above 100', () => {
     const veryBad = moveAccuracy(delta({ evalBeforeMoverCp: 100000, evalAfterMoverCp: -100000 }))
     expect(veryBad).toBeGreaterThanOrEqual(0)
@@ -83,6 +90,32 @@ describe('gameAccuracy', () => {
     }
 
     expect(gameAccuracy(input).white).toBeLessThan(arithmetic)
+  })
+
+  it('does not let one zero-accuracy move collapse the game to half the weighted mean', () => {
+    // moveAccuracy clamps to exactly 0 once the win-percent drop reaches ~80,
+    // and winPercent() saturates mate to 0/100, so "had mate, gets mated" is a
+    // 100-point drop -- reachable, since gameAnalyzer feeds moveAccuracy into
+    // gameAccuracy with no floor of its own. With the old 0.01 floor that one
+    // move contributed a reciprocal of 100 against 0.192 for the other
+    // nineteen, so the harmonic term was 0.1996 and the result 21.9719 --
+    // within 0.1 of weightedMean / 2, i.e. the harmonic half had been
+    // annihilated regardless of anything else the player did.
+    const weightedMean = 43.744186
+
+    const input: AccuracyInput = {
+      winPercents: Array.from({ length: 21 }, (_, i) => (i < 20 ? 55 : 0)),
+      moves: Array.from({ length: 20 }, (_, i) => ({
+        accuracy: i === 19 ? 0 : 99,
+        color: 'w' as const
+      }))
+    }
+
+    const white = gameAccuracy(input).white
+
+    expect(white).toBeCloseTo(30.2619, 3)
+    // The blend is a real average of two halves again, not weightedMean / 2.
+    expect(white - weightedMean / 2).toBeGreaterThan(5)
   })
 
   it('stays within 0 and 100', () => {
