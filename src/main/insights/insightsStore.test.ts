@@ -23,9 +23,11 @@ import {
   ensureUsernameScope,
   ensureSchemaVersion,
   isSchemaStale,
+  loadCurrentSchemaGameRecords,
   CURRENT_SCHEMA_VERSION,
   SCAN_GAME_LIMIT
 } from './insightsStore'
+import { buildInsightsReport } from './reportAggregator'
 import type { GameInsightRecord } from '../../shared/types'
 import { createHash } from 'node:crypto'
 
@@ -254,5 +256,59 @@ describe('insightsStore', () => {
 
   it('returns an empty array when no games directory exists yet', () => {
     expect(loadAllGameRecords()).toEqual([])
+  })
+
+  describe('loadCurrentSchemaGameRecords', () => {
+    it('leaves out records written under an older schema without deleting them', () => {
+      saveGameRecord({ ...recordFor('https://example.com/old'), schemaVersion: 1 })
+      saveGameRecord(recordFor('https://example.com/new'))
+
+      expect(loadCurrentSchemaGameRecords().map((r) => r.gameUrl)).toEqual([
+        'https://example.com/new'
+      ])
+      // Still on disk, so a future wider rescan can upgrade it.
+      expect(loadAllGameRecords()).toHaveLength(2)
+    })
+
+    it('leaves out a record with no schemaVersion field, which is version 1', () => {
+      const url = 'https://example.com/legacy'
+      const { schemaVersion: _omitted, ...legacy } = recordFor(url)
+      writeRecordJsonDirectly(url, legacy)
+
+      expect(loadCurrentSchemaGameRecords()).toEqual([])
+      expect(loadAllGameRecords()).toHaveLength(1)
+    })
+
+    it('builds the insights report from current-schema records only', () => {
+      // A user with more games cached than a rescan can reach keeps version-1
+      // records forever while the staleness banner reads clear. Their accuracy
+      // came from an arithmetic mean rather than the volatility-weighted /
+      // harmonic blend, so averaging the two schemas together reports a number
+      // that describes neither.
+      saveGameRecord({ ...recordFor('https://example.com/v1-a'), accuracy: 20, schemaVersion: 1 })
+      saveGameRecord({ ...recordFor('https://example.com/v1-b'), accuracy: 20, schemaVersion: 1 })
+      saveGameRecord({ ...recordFor('https://example.com/v2-a'), accuracy: 80 })
+      saveGameRecord({ ...recordFor('https://example.com/v2-b'), accuracy: 90 })
+
+      const report = buildInsightsReport(loadCurrentSchemaGameRecords(), null)
+      const overall = report.buckets.find((b) => b.key === 'overall')
+
+      expect(report.gamesScanned).toBe(2)
+      expect(overall?.averageAccuracy).toBe(85)
+    })
+
+    it('yields an empty report rather than a crash when every cached record is stale', () => {
+      saveGameRecord({ ...recordFor('https://example.com/v1-a'), accuracy: 20, schemaVersion: 1 })
+      saveGameRecord({ ...recordFor('https://example.com/v1-b'), accuracy: 40, schemaVersion: 1 })
+
+      const report = buildInsightsReport(loadCurrentSchemaGameRecords(), null)
+      const overall = report.buckets.find((b) => b.key === 'overall')
+
+      expect(report.gamesScanned).toBe(0)
+      expect(report.buckets).toHaveLength(1)
+      expect(overall?.averageAccuracy).toBe(0)
+      expect(overall?.hasEnoughData).toBe(false)
+      expect(overall?.totalMistakes).toBe(0)
+    })
   })
 })

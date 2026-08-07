@@ -20,7 +20,7 @@ import { runScan } from '../insights/scanRunner'
 import {
   ensureSchemaVersion,
   isSchemaStale,
-  loadAllGameRecords,
+  loadCurrentSchemaGameRecords,
   loadGameRecord,
   loadScanMeta
 } from '../insights/insightsStore'
@@ -204,9 +204,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     scanRuns.cancelCurrent()
   })
 
+  // Every aggregate below reads current-schema records only (see
+  // loadCurrentSchemaGameRecords): a version-1 record's accuracy and mistake
+  // list were produced by different rules, so mixing them into a report, a
+  // mastery tree or a puzzle queue misreports all three. The records stay on
+  // disk untouched.
   ipcMain.handle(IPC_CHANNELS.getInsightsReport, async () => {
     ensureSchemaVersion()
-    const records = loadAllGameRecords()
+    const records = loadCurrentSchemaGameRecords()
     const meta = loadScanMeta()
     const partialReport = buildInsightsReport(records, meta.lastScanTime)
     return { ...partialReport, topFindings: synthesizeTopFindings(partialReport), staleSchema: isSchemaStale() }
@@ -236,7 +241,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC_CHANNELS.getMasteryTree, async () => {
     ensureSchemaVersion()
-    const records = loadAllGameRecords()
+    const records = loadCurrentSchemaGameRecords()
     const masteryState = loadMasteryState()
     const srsState = loadSrsState()
     return buildMasteryTree(records, masteryState, srsState, Date.now())
@@ -244,7 +249,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle(IPC_CHANNELS.getNodeQueue, async (_event, key: MasteryNodeKey) => {
     ensureSchemaVersion()
-    const records = loadAllGameRecords()
+    const records = loadCurrentSchemaGameRecords()
     const masteryState = loadMasteryState()
     const srsState = loadSrsState()
     return buildNodeQueue(key, records, masteryState, srsState, Date.now())

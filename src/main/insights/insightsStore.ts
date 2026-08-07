@@ -166,6 +166,25 @@ export function loadGameRecord(gameUrl: string): GameInsightRecord | null {
   }
 }
 
+// The read-side counterpart to isSchemaStale()'s rescan window: user-facing
+// aggregates count only records at CURRENT_SCHEMA_VERSION, so the staleness
+// banner and the report agree about which records count. isSchemaStale() only
+// asks about the newest SCAN_GAME_LIMIT records because that is all a rescan
+// can reach, which means a user with more than that many cached games
+// permanently holds version-1 records no rescan will ever rebuild -- with the
+// banner reading clear. Blending those in is not cosmetic: version-1 `accuracy`
+// is a plain arithmetic mean where version 2 is the volatility-weighted /
+// harmonic blend, and version-1 `mistakes[]` membership came from centipawn
+// tiers where version 2 uses win-percent tiers. Mixing them puts a step in the
+// rolling-accuracy chart at the version boundary and quietly skews
+// averageAccuracy. Nothing is deleted: the filtered-out records stay on disk so
+// a future, wider rescan can still upgrade them.
+export function loadCurrentSchemaGameRecords(): GameInsightRecord[] {
+  return loadAllGameRecords().filter(
+    (record) => (record.schemaVersion ?? 1) >= CURRENT_SCHEMA_VERSION
+  )
+}
+
 export function loadAllGameRecords(): GameInsightRecord[] {
   const dir = gamesDir()
   if (!existsSync(dir)) return []
