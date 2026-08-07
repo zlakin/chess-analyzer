@@ -4,18 +4,13 @@ import type { MistakeDetail } from '../../../shared/types'
 import { TopFindingsList } from './insights/TopFindingsList'
 import { BucketTabs } from './insights/BucketTabs'
 import { MistakeCoachModal } from './MistakeCoachModal'
-import { formatRelativeTime } from '../lib/relativeTime'
+import { scanStatusLine } from '../lib/scanStatusLine'
 
 interface InsightsTabProps {
   state: InsightsScanState
   startScan: () => Promise<void>
   cancelScan: () => void
 }
-
-// A scan older than this no longer reflects "recent" play - the last-scan
-// line switches to a warning tone and nudges toward rescanning instead of
-// just reporting a fact the user has to notice is stale themselves.
-const STALE_SCAN_MS = 24 * 60 * 60 * 1000
 
 function formatEta(ms: number): string {
   const minutes = Math.round(ms / 60000)
@@ -25,9 +20,15 @@ function formatEta(ms: number): string {
 
 export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps): JSX.Element {
   const hasReport = state.report !== null && state.report.gamesScanned > 0
-  const lastScanTime = state.report?.lastScanTime ?? null
-  const staleSchema = state.report?.staleSchema ?? false
-  const isStale = staleSchema || (lastScanTime !== null && Date.now() - lastScanTime > STALE_SCAN_MS)
+  // Deliberately outside the hasReport branch below: a schema bump filters
+  // every cached record out of the aggregates, so this line is all that stands
+  // between the user and a tab that silently went blank after an update.
+  const status = scanStatusLine({
+    lastScanTime: state.report?.lastScanTime ?? null,
+    gamesScanned: state.report?.gamesScanned ?? 0,
+    staleSchema: state.report?.staleSchema ?? false,
+    now: Date.now()
+  })
 
   const [selectedMistake, setSelectedMistake] = useState<{ gameUrl: string; ply: number } | null>(null)
   const [mistakeDetail, setMistakeDetail] = useState<MistakeDetail | null>(null)
@@ -61,17 +62,7 @@ export function InsightsTab({ state, startScan, cancelScan }: InsightsTabProps):
   return (
     <div className="insights-tab">
       <div className="insights-header">
-        <span className={`insights-last-scan${isStale ? ' stale' : ''}`}>
-          {lastScanTime
-            ? `Scanned ${formatRelativeTime(lastScanTime)} · ${state.report?.gamesScanned} games${
-                staleSchema
-                  ? ' — analysis improved, rescan to update'
-                  : isStale
-                    ? ' — rescan to catch up'
-                    : ''
-              }`
-            : 'No scan yet'}
-        </span>
+        <span className={`insights-last-scan${status.stale ? ' stale' : ''}`}>{status.text}</span>
 
         {state.status === 'scanning' ? (
           <div className="insights-scan-progress">

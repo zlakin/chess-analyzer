@@ -141,9 +141,18 @@ export function ensureUsernameScope(username: string): void {
 // the previous "unlink every file in games/" behaviour meant that merely
 // opening a tab after a version bump destroyed hours of engine work with no
 // warning -- and orphaned every card in srs-state.json, which is keyed by
-// `${gameUrl}#${ply}`. Instead, stale records stay readable and keep
-// rendering; isGameScanned() reports them as unscanned so the next rescan
-// rebuilds them one game at a time, and the UI asks for that rescan.
+// `${gameUrl}#${ply}`.
+//
+// What replaces it is hiding, not deleting: a stale record is kept on disk
+// but filtered out of every aggregate (see loadCurrentSchemaGameRecords),
+// because its numbers were computed by rules the app no longer uses and
+// averaging them in misreports the report, the mastery tree and the puzzle
+// queues alike. getMistakeDetail is the one read that still returns one, so
+// an SRS card whose game is stale opens rather than 404s. The difference
+// from deleting is that every byte of engine work survives: isGameScanned()
+// reports a stale record as unscanned, so the next rescan rebuilds it one
+// game at a time, and the UI asks for that rescan (isSchemaStale() drives
+// the "analysis improved, rescan to update" line in the Insights header).
 export function ensureSchemaVersion(): void {
   const meta = loadScanMeta()
   if (meta.schemaVersion === CURRENT_SCHEMA_VERSION) return
