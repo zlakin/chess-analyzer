@@ -38,11 +38,17 @@ export class StockfishManager {
     // just its own run. Routing both events through the same drain path
     // settles every waiting caller with an error instead.
     const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
-      // stop() clears this.process before killing the child, so the exit it
-      // causes no longer matches and is correctly treated as expected rather
-      // than reported as a failure. The same guard makes the 'exit'/'close'
-      // pair idempotent: whichever fires first nulls this.process, so the
-      // second is ignored instead of double-settling.
+      // Ignores the exit stop() causes, which is expected rather than a
+      // failure. Note the ordering in stop() is kill() *then* this.process =
+      // null, so this guard does not work by being set up first -- it works
+      // because Node emits 'exit' asynchronously and never synchronously from
+      // kill(), so the null assignment always lands before this handler runs.
+      // Anything that breaks that assumption breaks the guard: an await
+      // slipped between the kill and the null, or a test double that emits
+      // 'exit' synchronously, would make a deliberate stop report itself as a
+      // crash. The same guard makes the 'exit'/'close' pair idempotent:
+      // whichever fires first nulls this.process, so the second is ignored
+      // instead of double-settling.
       if (this.process !== proc) return
       this.handleProcessError(
         new Error(

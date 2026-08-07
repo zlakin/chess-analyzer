@@ -20,14 +20,17 @@ async function getEngine(spawnFn: SpawnFn): Promise<StockfishManager> {
       // That half is explicitly NOT disjoint from the analysis pool's share.
       // It was, back when MAX_POOL_SIZE was 6; at 12 the arithmetic no longer
       // balances at exactly the mainstream core counts -- 8 cores gives 6 pool
-      // threads plus 4 here, 12 gives 10 plus 6, 16 gives 12 plus 8, and it
-      // only comes back into budget at 32 cores or more. The overlap is
-      // accepted rather than budgeted away, because the two are rarely hot at
-      // the same time: the pool's engines are busy only during an analysis run
-      // or an Insights scan, and this engine only while the user is sitting on
-      // a position waiting for an evaluation. It is a persistent singleton
-      // torn down only at app quit, so it does hold its threads open the whole
-      // session -- factor that in before raising either number.
+      // threads plus 4 here, 12 gives 10 plus 6, 16 gives 12 plus 8. With
+      // poolSize(n) = max(1, min(12, n - 2)) against max(1, floor(n / 2))
+      // here, the overshoot runs to 22 cores and clears at 23; 23 and 24 land
+      // exactly at capacity, so there is no actual headroom until 25. The
+      // overlap is accepted rather than budgeted away, because the two are
+      // rarely hot at the same time: the pool's engines are busy only during
+      // an analysis run or an Insights scan, and this engine only while the
+      // user is sitting on a position waiting for an evaluation. It is a
+      // persistent singleton torn down only at app quit, so it does hold its
+      // threads open the whole session -- factor that in before raising
+      // either number.
       const instance = new StockfishManager(getStockfishBinaryPath(), spawnFn, {
         threads: Math.max(1, Math.floor(cpus().length / 2)),
         hash: 256
