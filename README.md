@@ -44,7 +44,7 @@ npm run dev                # launches the Electron app
 supports (e.g. avx2, bmi2) rather than always grabbing the generic SSE2
 build, trying candidates best-first and falling back to the next one if a
 downloaded binary doesn't run. On one development machine the matched
-build ran at 1,929,267 nodes/second versus 1,106,154 for the generic
+build ran at 1,929,267 nodes/second versus 1,146,986 for the generic
 build — the gain will vary by CPU. The chosen build is recorded in
 `vendor/stockfish/version.json`; a later run reuses it as long as that
 file still matches and the binary still executes, so delete

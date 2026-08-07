@@ -47,14 +47,14 @@ describe('poolSize', () => {
 
 describe('poolHashMb', () => {
   it('divides the shared hash budget evenly across the pool', () => {
-    expect(poolHashMb(12)).toBe(85)
+    expect(poolHashMb(12)).toBe(21)
   })
 
   it('floors at 16 MB so a large pool never gets an unusably small hash table', () => {
     expect(poolHashMb(100)).toBe(16)
   })
 
-  it('caps at 256 MB even for a tiny pool, since hash barely helps short searches', () => {
+  it('gives a single-engine pool the whole budget', () => {
     expect(poolHashMb(1)).toBe(256)
   })
 })
