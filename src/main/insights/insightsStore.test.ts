@@ -84,6 +84,32 @@ describe('insightsStore', () => {
     })
   })
 
+  it('leaves no temp file behind after a successful scan-meta save', () => {
+    saveScanMeta({ username: 'hikaru' })
+
+    expect(readdirSync(userDataDir)).toEqual(['scan-meta.json'])
+  })
+
+  it('a failed scan-meta write leaves the previous file intact instead of truncating it', () => {
+    // The failure that matters in the field is a full disk: opening the
+    // destination with 'w' truncates it to 0 bytes and only then fails, and
+    // loadScanMeta() reads a 0-byte file as "no username recorded", which
+    // makes ensureUsernameScope() skip its games/ wipe. Occupying the temp
+    // path with a directory makes the write fail the same way here, and the
+    // point of the temp+rename is that the destination is never opened at
+    // all, so a failure cannot damage it.
+    saveScanMeta({ username: 'hikaru', lastScanTime: 12345 })
+    mkdirSync(join(userDataDir, 'scan-meta.json.tmp'))
+
+    expect(() => saveScanMeta({ lastScanTime: 99999 })).toThrow()
+    expect(loadScanMeta()).toEqual({
+      username: 'hikaru',
+      lastScanTime: 12345,
+      scannedUrls: [],
+      schemaVersion: CURRENT_SCHEMA_VERSION
+    })
+  })
+
   it('a game is not scanned until its record is saved', () => {
     expect(isGameScanned('https://www.chess.com/game/live/1')).toBe(false)
     saveGameRecord(recordFor('https://www.chess.com/game/live/1'))

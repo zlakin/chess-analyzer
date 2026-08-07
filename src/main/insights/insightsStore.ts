@@ -1,5 +1,13 @@
 import { app } from 'electron'
-import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync, readdirSync } from 'node:fs'
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  unlinkSync,
+  mkdirSync,
+  readdirSync,
+  renameSync
+} from 'node:fs'
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import type { GameInsightRecord, ScanMeta } from '../../shared/types'
@@ -56,18 +64,35 @@ export function loadScanMeta(): ScanMeta {
   }
 }
 
+// Writes through a temp file and renames, matching srsStore, masteryStore and
+// puzzleStatsStore. saveGameRecord() re-saves this file once per newly scanned
+// game, so a 100-game scan -- exactly what the version-2 migration forces --
+// performs 100 write cycles. A bare writeFileSync opens the destination with
+// 'w', which truncates to 0 bytes before writing, so a failure as ordinary as
+// a full disk leaves an empty file behind. loadScanMeta() then catches the
+// parse failure and hands back defaultScanMeta(), whose `username` is null,
+// and ensureUsernameScope() reads null as "first scan ever" and skips the
+// games/ wipe -- so relinking to a second chess.com account would silently
+// aggregate the first account's cached games into the second account's
+// insights, weak openings and mastery queues. Preventing exactly that is the
+// guard's entire job, so this file must never be observed half-written.
 export function saveScanMeta(patch: Partial<ScanMeta>): ScanMeta {
   const merged = { ...loadScanMeta(), ...patch }
+  const path = scanMetaPath()
   mkdirSync(app.getPath('userData'), { recursive: true })
-  writeFileSync(scanMetaPath(), JSON.stringify(merged, null, 2), 'utf-8')
+  const tmpPath = `${path}.tmp`
+  writeFileSync(tmpPath, JSON.stringify(merged, null, 2), 'utf-8')
+  renameSync(tmpPath, path)
   return merged
 }
 
 // Whether a game is scanned is decided solely by its own per-game cache
-// file -- not by scan-meta.json's `scannedUrls` ledger -- so a corrupted or
-// truncated scan-meta.json (e.g. from a process killed mid-write, since
-// saveScanMeta isn't an atomic write) can't wipe the "already scanned"
-// status of every previously-cached game at once.
+// file -- not by scan-meta.json's `scannedUrls` ledger -- so a corrupted
+// scan-meta.json can't wipe the "already scanned" status of every
+// previously-cached game at once. saveScanMeta() is atomic, so it is no longer
+// the likely source of such corruption, but the ledger is still the wrong
+// thing to trust: it is a single file whose loss would otherwise invalidate
+// every game at once, where a per-game file can only ever lose its own game.
 export function isGameScanned(gameUrl: string): boolean {
   const path = gameRecordPath(gameUrl)
   if (!existsSync(path)) return false
