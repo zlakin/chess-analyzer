@@ -15,7 +15,17 @@ import type { GameInsightRecord, ScanMeta } from '../../shared/types'
 // Version 2: move classification moved from raw centipawn loss to
 // win-probability loss, and the sacrifice signal moved to static exchange
 // evaluation, so version-1 mistakes were selected by different rules.
-export const CURRENT_SCHEMA_VERSION = 2
+//
+// Version 3: gameAccuracy's harmonic floor moved from 0.01 to 1, so a single
+// near-zero-accuracy move no longer halves the game score. Nothing about the
+// record's *shape* changed, which is exactly why this bump is easy to forget
+// -- but the persisted `accuracy` of any game containing such a move is a
+// different number now (accuracy.test.ts pins the same fixture at 30.2619
+// where it read 21.9719), and a version that stops tracking the rules behind
+// the numbers stops doing its only job: without this, records written earlier
+// on this branch would average straight in and step the rolling-accuracy
+// chart at a boundary nothing marked.
+export const CURRENT_SCHEMA_VERSION = 3
 
 // The number of most-recent games a scan fetches -- see
 // fetchRecentGames(username, SCAN_GAME_LIMIT) in scanRunner.ts -- and

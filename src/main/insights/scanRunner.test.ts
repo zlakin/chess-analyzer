@@ -21,8 +21,11 @@ vi.mock('./insightsStore', () => ({
   // extractInsightRecord.ts (reached indirectly through runScan) reads this
   // constant to stamp every record it builds -- the mock above replaces the
   // whole module, so it has to be supplied here too or that import resolves
-  // to undefined. The exact number doesn't matter to any assertion below.
-  CURRENT_SCHEMA_VERSION: 2,
+  // to undefined. No assertion below reads schemaVersion (the only record
+  // assertions are toMatchObject({ gameUrl })), so the number is inert here;
+  // it tracks insightsStore.ts's real constant anyway so it cannot drift into
+  // looking meaningful.
+  CURRENT_SCHEMA_VERSION: 3,
   // scanRunner.ts now imports its game-fetch limit from insightsStore.ts
   // (moved there so isSchemaStale() and runScan() share one definition
   // instead of duplicating the number) -- same reasoning as

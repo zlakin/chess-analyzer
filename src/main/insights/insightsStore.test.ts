@@ -209,6 +209,24 @@ describe('insightsStore', () => {
     expect(loadScanMeta().schemaVersion).toBe(storedVersionBefore)
   })
 
+  it('treats a version-2 record as stale, since the accuracy formula changed after it was written', () => {
+    // Version 2 -> 3 marks a change with no schema-shaped symptom: the
+    // harmonic floor in accuracy.ts moved from 0.01 to 1, which rewrites the
+    // persisted `accuracy` of any game holding a near-zero-accuracy move --
+    // accuracy.test.ts pins the same 20-move fixture at 30.2619 where it used
+    // to be 21.9719. A version-2 record therefore carries a number the app no
+    // longer computes, and blending it into averageAccuracy puts a step in the
+    // rolling-accuracy chart at exactly the boundary the version has to mark.
+    const url = 'https://example.com/version-2'
+    saveGameRecord({ ...recordFor(url), schemaVersion: 2 })
+
+    expect(isSchemaStale()).toBe(true)
+    expect(isGameScanned(url)).toBe(false)
+    expect(loadCurrentSchemaGameRecords()).toEqual([])
+    // Nothing is deleted: a rescan upgrades it in place.
+    expect(loadAllGameRecords()).toHaveLength(1)
+  })
+
   it('treats a stale record inside the reachable rescan window as stale', () => {
     // A rescan only ever refetches the newest SCAN_GAME_LIMIT games (see
     // fetchRecentGames(username, SCAN_GAME_LIMIT) in scanRunner.ts), so a
