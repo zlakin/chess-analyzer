@@ -9,6 +9,8 @@ import { getStockfishBinaryPath } from '../engine/stockfishPath'
 import { evaluateExplorationPosition } from '../engine/explorationEngine'
 import { createEnginePool, poolHashMb, poolSize } from '../engine/enginePool'
 import type { EnginePool } from '../engine/enginePool'
+import { createSharedEnginePool, leaseAsPool } from '../engine/sharedEnginePool'
+import type { EnginePoolLease } from '../engine/sharedEnginePool'
 import { analyzeGame } from '../analysis/gameAnalyzer'
 import { fetchRecentGames, fetchPlayerStats, ChessComFetchError } from '../chesscom/chessComClient'
 import { loadSettings, saveSettings } from '../settings/settingsStore'
@@ -47,6 +49,14 @@ function createDefaultPool(): Promise<EnginePool> {
   )
 }
 
+// Both handlers below acquire this one pool rather than each building their
+// own, so overlapping runs share poolSize(cpus().length) engines instead of
+// doubling them on the same cores. It is also what makes enginePool's
+// POOL_HASH_BUDGET_MB an honest machine-wide figure: with a pool per handler
+// the budget was really a per-run multiplier, and two concurrent runs quietly
+// reserved twice what the constant claims.
+const sharedEnginePool = createSharedEnginePool(createDefaultPool)
+
 // Per-run cancellation state, not a single shared boolean: without this, a
 // cancel request racing against a newly-started analysis invocation could be
 // silently erased (see AnalysisRunTracker for details).
@@ -65,15 +75,15 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       // Stockfish binary is missing) -- otherwise the run's entry lingers
       // forever in AnalysisRunTracker's internal map.
       try {
-        let pool: EnginePool
+        let lease: EnginePoolLease
         try {
-          pool = await createDefaultPool()
+          lease = await sharedEnginePool.acquire()
         } catch (err) {
           return { error: `Could not start Stockfish: ${(err as Error).message}` }
         }
 
         try {
-          return await analyzeGame(positions, pool, {
+          return await analyzeGame(positions, lease.pool, {
             depth: depth || ANALYSIS_DEPTH_DEFAULT,
             isCancelled: () => analysisRuns.isCancelled(runId),
             onMove: (move) => {
@@ -83,7 +93,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
         } catch (err) {
           return { error: `Analysis failed: ${(err as Error).message}` }
         } finally {
-          pool.stop()
+          // Release, not stop: a scan running alongside this analysis may still
+          // be holding the same engines. The pool stops when the last holder
+          // lets go.
+          lease.release()
         }
       } finally {
         analysisRuns.finish(runId)
@@ -172,7 +185,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     try {
       return await runScan(username, {
         isCancelled: () => scanRuns.isCancelled(runId),
-        createPool: createDefaultPool,
+        // runScan stops the pool it is handed on every exit path, cancellation
+        // included; leaseAsPool turns that into releasing this run's lease so a
+        // concurrent analysis run keeps its engines.
+        createPool: async () => leaseAsPool(await sharedEnginePool.acquire()),
         onProgress: (progress) => {
           getWindow()?.webContents.send(IPC_CHANNELS.scanProgress, progress)
         }
