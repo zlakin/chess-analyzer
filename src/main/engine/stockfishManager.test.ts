@@ -208,6 +208,93 @@ describe('StockfishManager', () => {
     consoleErrorSpy.mockRestore()
   })
 
+  it('rejects an in-flight evaluatePosition() when the child dies after spawning successfully', async () => {
+    // Node emits 'error' only for a failure to spawn; a child killed later
+    // (SIGSEGV, the OOM killer) emits only 'exit'/'close'. Before those were
+    // handled this promise never settled at all, which hung the engine pool's
+    // release() and made gameAnalyzer's Cancel inert.
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      { depth: 15, multiPv: 2 }
+    )
+
+    proc.emit('exit', null, 'SIGSEGV')
+
+    await expect(evalPromise).rejects.toThrow('exited unexpectedly')
+  })
+
+  it("rejects an in-flight evaluatePosition() when the child's streams close without an exit event", async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      { depth: 15, multiPv: 2 }
+    )
+
+    proc.emit('close', 139, null)
+
+    await expect(evalPromise).rejects.toThrow('exited unexpectedly')
+  })
+
+  it('rejects a pending start() when the child dies during the UCI handshake', async () => {
+    // createEnginePool awaits Promise.all over every engine's start(), so a
+    // death mid-handshake used to leave that Promise.all unsettled and leak
+    // every healthy sibling engine.
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+
+    const startPromise = manager.start()
+    proc.emit('exit', null, 'SIGKILL')
+
+    await expect(startPromise).rejects.toThrow('exited unexpectedly')
+  })
+
+  it('does not report an error when the child exits because stop() killed it', async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    manager.stop()
+    // A real child emits both of these after kill(); neither is a failure.
+    proc.emit('exit', null, 'SIGTERM')
+    proc.emit('close', null, 'SIGTERM')
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('settles a pending call exactly once when a dying child emits both exit and close', async () => {
+    const { proc } = createFakeProcess()
+    const manager = new StockfishManager('/fake/path/to/stockfish', () => proc)
+    await manager.start()
+
+    const evalPromise = manager.evaluatePosition(
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      { depth: 15, multiPv: 2 }
+    )
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    proc.emit('exit', null, 'SIGSEGV')
+    proc.emit('close', null, 'SIGSEGV')
+
+    await expect(evalPromise).rejects.toThrow('exited unexpectedly')
+    // The second event must not fall through to the "no pending request"
+    // branch and log a spurious second failure.
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
   it('synthesizes a terminal EngineLine for a checkmated position (real Stockfish emits no pv)', async () => {
     // Real Stockfish output for a checkmate FEN: an "info depth 0 score mate
     // 0" line (no " pv " token, since there is no legal move to report) then

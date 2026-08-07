@@ -25,6 +25,33 @@ export class StockfishManager {
     const proc = this.spawnFn(this.binaryPath, [])
     this.process = proc
     proc.on('error', (err: Error) => this.handleProcessError(err))
+    // Node emits 'error' only when the child could not be *spawned* at all
+    // (ENOENT, EACCES). A child that spawned fine and later died -- SIGSEGV,
+    // SIGKILL, the OOM killer -- emits only 'exit'/'close'. Without these
+    // listeners handleProcessError() never runs, so pendingErrorHandlers are
+    // never drained and the in-flight evaluatePosition() promise never
+    // settles. The resulting hang is total, not merely slow: the engine pool
+    // never runs its release(), gameAnalyzer's flush loop never advances (and
+    // since the cancellation check lives inside that loop, Cancel goes inert),
+    // and because the pool is now shared across the analysis and scan
+    // handlers, one dead child stalls every concurrent consumer rather than
+    // just its own run. Routing both events through the same drain path
+    // settles every waiting caller with an error instead.
+    const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+      // stop() clears this.process before killing the child, so the exit it
+      // causes no longer matches and is correctly treated as expected rather
+      // than reported as a failure. The same guard makes the 'exit'/'close'
+      // pair idempotent: whichever fires first nulls this.process, so the
+      // second is ignored instead of double-settling.
+      if (this.process !== proc) return
+      this.handleProcessError(
+        new Error(
+          `StockfishManager: engine process exited unexpectedly (code ${code}, signal ${signal})`
+        )
+      )
+    }
+    proc.on('exit', onExit)
+    proc.on('close', onExit)
     proc.stdout.on('data', (chunk: Buffer) => this.onData(chunk))
     // Previously silently dropped: without this listener, anything the
     // engine writes to stderr (e.g. a crash message) is lost, making a dead
@@ -163,11 +190,14 @@ export class StockfishManager {
   }
 
   /**
-   * Handles the child process's 'error' event (e.g. ENOENT when the Stockfish
-   * binary is missing or misconfigured). Without this listener, Node.js would
-   * throw the 'error' event as an uncaught exception and crash the Electron
-   * main process. Any promise currently awaiting a response from the engine
-   * is rejected with the underlying error instead.
+   * The single drain path for a child process that is no longer going to
+   * answer: the 'error' event (e.g. ENOENT when the Stockfish binary is
+   * missing or misconfigured) and the 'exit'/'close' events (a child that
+   * spawned successfully and then died). Without an 'error' listener, Node.js
+   * would throw that event as an uncaught exception and crash the Electron
+   * main process; without the exit listeners, a dead child would settle
+   * nothing at all. Either way, any promise currently awaiting a response from
+   * the engine is rejected with the underlying error instead of hanging.
    */
   private handleProcessError(err: Error): void {
     this.process = null
