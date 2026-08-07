@@ -184,21 +184,22 @@ export async function analyzeGame(
           (evaluation) => {
             outstanding -= 1
             results[i] = evaluation
-            // tryFlush() runs synchronously inside this fulfillment handler,
-            // whose own returned promise is discarded by .then() below - if
-            // it threw (e.g. options.onMove synchronously throwing because
-            // the renderer window was destroyed mid-analysis), that would
-            // otherwise become an unhandled rejection and leave `settled`
-            // false forever, hanging analyzeGame's outer promise. Route any
-            // such throw through the same finishOnce/reject path as a
-            // genuine evaluatePosition rejection.
+            // tryFlush() and pump() run synchronously inside this fulfillment
+            // handler, whose own returned promise is discarded by .then()
+            // below - if either threw (e.g. options.onMove synchronously
+            // throwing because the renderer window was destroyed
+            // mid-analysis, or an engine implementation that throws instead
+            // of returning a rejected promise), that would otherwise become
+            // an unhandled rejection and leave `settled` false forever,
+            // hanging analyzeGame's outer promise. Route any such throw
+            // through the same finishOnce/reject path as a genuine
+            // evaluatePosition rejection.
             try {
               tryFlush()
+              pump()
             } catch (err) {
               finishOnce(() => reject(err instanceof Error ? err : new Error(String(err))))
-              return
             }
-            pump()
           },
           (err: unknown) => {
             outstanding -= 1
