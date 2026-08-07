@@ -92,6 +92,58 @@ describe('gameAccuracy', () => {
     expect(gameAccuracy(input).white).toBeLessThan(arithmetic)
   })
 
+  it('weights moves made in a volatile stretch above quiet ones', () => {
+    // Every other gameAccuracy fixture feeds a constant winPercents, so every
+    // window has stddev 0, every weight clamps to the 0.5 floor and the
+    // weighting is mathematically inert -- replacing the whole weight
+    // computation with moves.map(() => 1) left the suite green. Here the swing
+    // at plies 7-11 lifts those weights well above the floor, and white's one
+    // bad move sits inside it. Uniform weights score this game 78.2955; the
+    // real weighting scores it 71.2021.
+    const input: AccuracyInput = {
+      winPercents: [
+        50, 52, 51, 53, 50, 52, 51, 80, 20, 75, 25, 70, 52, 51, 50, 52, 51, 50, 52, 51, 50
+      ],
+      moves: Array.from({ length: 20 }, (_, i) => ({
+        accuracy: i === 8 ? 20 : 95,
+        color: i % 2 === 0 ? ('w' as const) : ('b' as const)
+      }))
+    }
+
+    const result = gameAccuracy(input)
+
+    expect(result.white).toBeCloseTo(71.2021, 3)
+    // Black played every move at 95, so no weighting can move black's score --
+    // which is what makes white's number attributable to the weights alone.
+    expect(result.black).toBeCloseTo(95, 6)
+  })
+
+  it('lines each weight up with its own move in a game long enough to reach the maximum window', () => {
+    // 80 plies makes windowSize hit its cap of 8, which is where the
+    // windowSize - 2 leading copies of the first window matter: they are what
+    // makes windows.length equal moves.length, so weights[i] belongs to
+    // moves[i]. Drop that padding and every weight shifts by 6 plies.
+    //
+    // The single 65 at index 38 makes exactly the windows spanning it
+    // volatile, giving weight 4.9608 (deliberately below the clamp of 12, so
+    // the stddev itself is pinned, not just the clamp) to plies 37-44 -- and
+    // those are exactly the plies scored 0 here. Misalign by 6 and the high
+    // weights land on plies 31-38, which are mostly perfect moves, scoring the
+    // game 46.0509 instead of 28.3695. Uniform weights score it 49.5872.
+    const input: AccuracyInput = {
+      winPercents: Array.from({ length: 81 }, (_, i) => (i === 38 ? 65 : 50)),
+      moves: Array.from({ length: 80 }, (_, i) => ({
+        accuracy: i >= 37 && i <= 44 ? 0 : 100,
+        color: i % 2 === 0 ? ('w' as const) : ('b' as const)
+      }))
+    }
+
+    const result = gameAccuracy(input)
+
+    expect(result.white).toBeCloseTo(28.3695, 3)
+    expect(result.black).toBeCloseTo(28.3695, 3)
+  })
+
   it('does not let one zero-accuracy move collapse the game to half the weighted mean', () => {
     // moveAccuracy clamps to exactly 0 once the win-percent drop reaches ~80,
     // and winPercent() saturates mate to 0/100, so "had mate, gets mated" is a
